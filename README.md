@@ -1,1 +1,3 @@
-# sandwich-bear
+# Sandwich Bear
+
+![](./docs/poster.jpeg)

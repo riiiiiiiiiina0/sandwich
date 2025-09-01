@@ -1,0 +1,281 @@
+// Background script to remove headers that prevent iframe loading
+
+chrome.runtime.onInstalled.addListener(() => {
+  // Remove headers that prevent iframe loading
+  const rules = [
+    {
+      id: 1,
+      priority: 1,
+      action: {
+        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
+        responseHeaders: [
+          {
+            header: 'X-Frame-Options',
+            operation: /** @type {'remove'} */ ('remove'),
+          },
+        ],
+      },
+      condition: {
+        urlFilter: '*',
+        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
+          'main_frame',
+          'sub_frame',
+        ]),
+      },
+    },
+    {
+      id: 2,
+      priority: 1,
+      action: {
+        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
+        responseHeaders: [
+          {
+            header: 'Frame-Options',
+            operation: /** @type {'remove'} */ ('remove'),
+          },
+        ],
+      },
+      condition: {
+        urlFilter: '*',
+        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
+          'main_frame',
+          'sub_frame',
+        ]),
+      },
+    },
+    {
+      id: 3,
+      priority: 1,
+      action: {
+        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
+        responseHeaders: [
+          {
+            header: 'Content-Security-Policy',
+            operation: /** @type {'remove'} */ ('remove'),
+          },
+        ],
+      },
+      condition: {
+        urlFilter: '*',
+        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
+          'main_frame',
+          'sub_frame',
+        ]),
+      },
+    },
+    {
+      id: 4,
+      priority: 1,
+      action: {
+        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
+        responseHeaders: [
+          {
+            header: 'Content-Security-Policy-Report-Only',
+            operation: /** @type {'remove'} */ ('remove'),
+          },
+        ],
+      },
+      condition: {
+        urlFilter: '*',
+        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
+          'main_frame',
+          'sub_frame',
+        ]),
+      },
+    },
+  ];
+
+  // Remove existing rules and add new ones
+  chrome.declarativeNetRequest
+    .updateDynamicRules({
+      removeRuleIds: [1, 2, 3, 4],
+      addRules: rules,
+    })
+    .then(() => {
+      console.log(
+        'Frame-blocking headers removal rules installed successfully',
+      );
+    })
+    .catch((error) => {
+      console.error('Failed to install header removal rules:', error);
+    });
+});
+
+// Also handle extension startup
+chrome.runtime.onStartup.addListener(() => {
+  console.log(
+    'Sandwich Bear extension started - frame-blocking headers will be removed',
+  );
+});
+
+// Update action title to indicate what clicking will do in current context
+const updateActionTitle = async () => {
+  try {
+    const [activeTab] = await chrome.tabs.query({
+      active: true,
+      currentWindow: true,
+    });
+    if (!activeTab || typeof activeTab.id !== 'number') return;
+
+    const splitBaseUrl = chrome.runtime.getURL('src/split.html');
+    let title = 'Sandwich Bear';
+
+    if (
+      typeof activeTab.url === 'string' &&
+      activeTab.url.startsWith(splitBaseUrl)
+    ) {
+      // On split page: show Restore {N} tabs based on query param
+      try {
+        const urlObj = new URL(activeTab.url);
+        const urlsParam = urlObj.searchParams.get('urls');
+        const count = urlsParam
+          ? urlsParam
+              .split(',')
+              .map((s) => decodeURIComponent(s))
+              .filter((u) => u && u.length > 0).length
+          : 0;
+        title = `Restore ${count} tabs`;
+      } catch (_e) {
+        title = 'Restore tabs';
+      }
+    } else {
+      // Not on split page: show Open {N (2<=N<=4)} tabs in split view
+      const windowId = activeTab.windowId;
+      const highlightedTabs = await chrome.tabs.query({
+        highlighted: true,
+        windowId,
+      });
+      const httpTabs = highlightedTabs.filter(
+        (t) =>
+          typeof t.url === 'string' &&
+          (t.url.startsWith('http://') || t.url.startsWith('https://')),
+      );
+      if (httpTabs.length <= 1) {
+        title = 'Highlight multiple tabs to open in split view';
+      } else {
+        const n = Math.max(2, Math.min(4, httpTabs.length));
+        title = `Open ${n} tabs in split view`;
+      }
+    }
+
+    await chrome.action.setTitle({ title, tabId: activeTab.id });
+  } catch (_e) {
+    // no-op
+  }
+};
+
+// Keep title updated on common events
+chrome.tabs.onActivated.addListener(() => {
+  updateActionTitle();
+});
+chrome.tabs.onUpdated.addListener((_tabId, changeInfo, _tab) => {
+  if (changeInfo.status === 'complete' || 'url' in changeInfo) {
+    updateActionTitle();
+  }
+});
+chrome.tabs.onHighlighted.addListener(() => {
+  updateActionTitle();
+});
+chrome.windows.onFocusChanged.addListener(() => {
+  updateActionTitle();
+});
+
+// Initialize title on install/startup
+chrome.runtime.onInstalled.addListener(() => {
+  updateActionTitle();
+});
+chrome.runtime.onStartup.addListener(() => {
+  updateActionTitle();
+});
+
+// Handle action button click: open up to the first 4 highlighted tabs in split page
+chrome.action.onClicked.addListener(async (currentTab) => {
+  try {
+    // If we're currently on the split page, unsplit: open all iframe URLs as tabs and close the split tab
+    const splitBaseUrl = chrome.runtime.getURL('src/split.html');
+    if (
+      typeof currentTab.url === 'string' &&
+      currentTab.url.startsWith(splitBaseUrl)
+    ) {
+      try {
+        const urlObj = new URL(currentTab.url);
+        const urlsParam = urlObj.searchParams.get('urls');
+        if (urlsParam) {
+          const urls = urlsParam
+            .split(',')
+            .map((s) => decodeURIComponent(s))
+            .filter((u) => typeof u === 'string' && u.length > 0);
+
+          const baseIndex = (currentTab.index ?? 0) + 1;
+          await Promise.all(
+            urls.map((u, i) =>
+              chrome.tabs.create({
+                url: u,
+                windowId: currentTab.windowId,
+                index: baseIndex + i,
+              }),
+            ),
+          );
+        }
+      } catch (unsplitErr) {
+        console.error('Failed to unsplit tabs:', unsplitErr);
+      }
+
+      if (typeof currentTab.id === 'number') {
+        try {
+          await chrome.tabs.remove(currentTab.id);
+        } catch (removeErr) {
+          console.error('Failed to close split tab:', removeErr);
+        }
+      }
+      return;
+    }
+
+    // Get highlighted tabs in the current window
+    const highlightedTabs = await chrome.tabs.query({
+      highlighted: true,
+      currentWindow: true,
+    });
+
+    // Filter to http/https tabs, sort by tab index (left-to-right), take first 4
+    const httpTabs = highlightedTabs
+      .filter(
+        (t) =>
+          typeof t.url === 'string' &&
+          (t.url.startsWith('http://') || t.url.startsWith('https://')),
+      )
+      .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+      .slice(0, 4);
+
+    if (httpTabs.length < 2) {
+      console.log(
+        'Highlighted tabs did not include at least two HTTP(S) pages; doing nothing.',
+      );
+      return;
+    }
+
+    const urlsParam = httpTabs
+      .map((t) => encodeURIComponent(String(t.url)))
+      .join(',');
+
+    const splitUrl = `${chrome.runtime.getURL(
+      'src/split.html',
+    )}?urls=${urlsParam}`;
+
+    await chrome.tabs.create({ url: splitUrl, windowId: currentTab.windowId });
+
+    // Close the used highlighted tabs
+    try {
+      const tabIdsToClose = httpTabs
+        .map((t) => t.id)
+        .filter((id) => typeof id === 'number');
+      if (tabIdsToClose.length > 0) {
+        await chrome.tabs.remove(/** @type {number[]} */ (tabIdsToClose));
+      }
+    } catch (closeErr) {
+      console.error('Failed to close used highlighted tabs:', closeErr);
+    }
+  } catch (error) {
+    console.error('Failed to open split page from highlighted tabs:', error);
+  }
+});
