@@ -11,7 +11,14 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   chrome.tabs.query({}, (tabs) => {
-    const windows = tabs.reduce((acc, tab) => {
+    // Filter out tabs that are not HTTP/HTTPS
+    const httpTabs = tabs.filter(
+      (tab) =>
+        tab.url &&
+        (tab.url.startsWith('http://') || tab.url.startsWith('https://')),
+    );
+
+    const windows = httpTabs.reduce((acc, tab) => {
       if (!acc[tab.windowId]) {
         acc[tab.windowId] = [];
       }
@@ -21,12 +28,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     for (const windowId in windows) {
       const windowDiv = document.createElement('div');
-      windowDiv.className = 'mb-4';
-
-      const windowHeader = document.createElement('h2');
-      windowHeader.className = 'text-lg font-semibold';
-      windowHeader.textContent = `Window ${windowId}`;
-      windowDiv.appendChild(windowHeader);
+      windowDiv.className = 'mb-4 p-3 bg-gray-100 rounded-lg';
 
       windows[windowId].forEach((tab) => {
         const tabDiv = document.createElement('div');
@@ -37,9 +39,11 @@ document.addEventListener('DOMContentLoaded', () => {
         checkbox.className = 'checkbox checkbox-primary';
         checkbox.value = tab.url;
         checkbox.dataset.tabId = tab.id;
+        checkbox.id = `tab-${tab.id}`;
 
         const label = document.createElement('label');
-        label.className = 'ml-2 flex items-center';
+        label.className = 'ml-2 flex items-center cursor-pointer';
+        label.htmlFor = `tab-${tab.id}`;
 
         if (tab.favIconUrl) {
           const favicon = document.createElement('img');
