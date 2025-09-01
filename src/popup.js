@@ -1,6 +1,14 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const tabListContainer = document.getElementById('tab-list');
-  const openSplitScreenBtn = document.getElementById('open-split-screen');
+  const tabListContainer = /** @type {HTMLElement} */ (
+    document.getElementById('tab-list')
+  );
+  const openSplitScreenBtn = /** @type {HTMLButtonElement} */ (
+    document.getElementById('open-split-screen')
+  );
+
+  if (!tabListContainer || !openSplitScreenBtn) {
+    throw new Error('Tab list container or open split screen button not found');
+  }
 
   chrome.tabs.query({}, (tabs) => {
     const windows = tabs.reduce((acc, tab) => {
@@ -68,7 +76,7 @@ document.addEventListener('DOMContentLoaded', () => {
       'input[type="checkbox"]:checked',
     );
     const urls = Array.from(selectedCheckboxes).map((cb) =>
-      encodeURIComponent(cb.value),
+      encodeURIComponent(/** @type {HTMLInputElement} */ (cb).value),
     );
     const splitScreenUrl = `src/split.html?urls=${urls.join(',')}`;
 

@@ -7,68 +7,80 @@ chrome.runtime.onInstalled.addListener(() => {
       id: 1,
       priority: 1,
       action: {
-        type: 'modifyHeaders',
+        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
         responseHeaders: [
           {
             header: 'X-Frame-Options',
-            operation: 'remove',
+            operation: /** @type {'remove'} */ ('remove'),
           },
         ],
       },
       condition: {
         urlFilter: '*',
-        resourceTypes: ['main_frame', 'sub_frame'],
+        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
+          'main_frame',
+          'sub_frame',
+        ]),
       },
     },
     {
       id: 2,
       priority: 1,
       action: {
-        type: 'modifyHeaders',
+        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
         responseHeaders: [
           {
             header: 'Frame-Options',
-            operation: 'remove',
+            operation: /** @type {'remove'} */ ('remove'),
           },
         ],
       },
       condition: {
         urlFilter: '*',
-        resourceTypes: ['main_frame', 'sub_frame'],
+        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
+          'main_frame',
+          'sub_frame',
+        ]),
       },
     },
     {
       id: 3,
       priority: 1,
       action: {
-        type: 'modifyHeaders',
+        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
         responseHeaders: [
           {
             header: 'Content-Security-Policy',
-            operation: 'remove',
+            operation: /** @type {'remove'} */ ('remove'),
           },
         ],
       },
       condition: {
         urlFilter: '*',
-        resourceTypes: ['main_frame', 'sub_frame'],
+        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
+          'main_frame',
+          'sub_frame',
+        ]),
       },
     },
     {
       id: 4,
       priority: 1,
       action: {
-        type: 'modifyHeaders',
+        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
         responseHeaders: [
           {
             header: 'Content-Security-Policy-Report-Only',
-            operation: 'remove',
+            operation: /** @type {'remove'} */ ('remove'),
           },
         ],
       },
       condition: {
         urlFilter: '*',
-        resourceTypes: ['main_frame', 'sub_frame'],
+        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
+          'main_frame',
+          'sub_frame',
+        ]),
       },
     },
   ];
