@@ -1,12 +1,19 @@
 {
   "manifest_version": 3,
-  "name": "Tab Splitter",
- "version": "1.0",
+  "name": "Sandwich Bear",
+  "version": "1.0",
   "description": "Select and view tabs in a split screen layout.",
   "permissions": [
-    "tabs"
+    "tabs",
+    "declarativeNetRequest"
+  ],
+  "host_permissions": [
+    "<all_urls>"
   ],
   "action": {
-    "default_popup": "popup.html"
+    "default_popup": "src/popup.html"
+  },
+  "background": {
+    "service_worker": "src/background.js"
   }
 }

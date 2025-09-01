@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', () => {
       windowHeader.textContent = `Window ${windowId}`;
       windowDiv.appendChild(windowHeader);
 
-      windows[windowId].forEach(tab => {
+      windows[windowId].forEach((tab) => {
         const tabDiv = document.createElement('div');
         tabDiv.className = 'flex items-center my-1';
 
@@ -34,10 +34,10 @@ document.addEventListener('DOMContentLoaded', () => {
         label.className = 'ml-2 flex items-center';
 
         if (tab.favIconUrl) {
-            const favicon = document.createElement('img');
-            favicon.src = tab.favIconUrl;
-            favicon.className = 'w-4 h-4 mr-2';
-            label.appendChild(favicon);
+          const favicon = document.createElement('img');
+          favicon.src = tab.favIconUrl;
+          favicon.className = 'w-4 h-4 mr-2';
+          label.appendChild(favicon);
         }
 
         const title = document.createElement('span');
@@ -53,7 +53,9 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   tabListContainer.addEventListener('change', () => {
-    const selectedCheckboxes = tabListContainer.querySelectorAll('input[type="checkbox"]:checked');
+    const selectedCheckboxes = tabListContainer.querySelectorAll(
+      'input[type="checkbox"]:checked',
+    );
     if (selectedCheckboxes.length >= 2 && selectedCheckboxes.length <= 4) {
       openSplitScreenBtn.disabled = false;
     } else {
@@ -62,9 +64,13 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   openSplitScreenBtn.addEventListener('click', () => {
-    const selectedCheckboxes = tabListContainer.querySelectorAll('input[type="checkbox"]:checked');
-    const urls = Array.from(selectedCheckboxes).map(cb => encodeURIComponent(cb.value));
-    const splitScreenUrl = `split.html?urls=${urls.join(',')}`;
+    const selectedCheckboxes = tabListContainer.querySelectorAll(
+      'input[type="checkbox"]:checked',
+    );
+    const urls = Array.from(selectedCheckboxes).map((cb) =>
+      encodeURIComponent(cb.value),
+    );
+    const splitScreenUrl = `src/split.html?urls=${urls.join(',')}`;
 
     chrome.tabs.create({ url: splitScreenUrl });
   });
