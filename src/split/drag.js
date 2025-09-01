@@ -1,5 +1,6 @@
 import { appState } from './state.js';
 import { updateUrlWithState } from './url.js';
+import { recalcAllWrapperSizes } from './size.js';
 
 export const addDividerDragFunctionality = (divider) => {
   const iframeContainer = appState.getContainer();
@@ -16,10 +17,15 @@ export const addDividerDragFunctionality = (divider) => {
 
     const currentPosition = isVerticalLayout() ? e.clientY : e.clientX;
     const delta = currentPosition - startPosition;
+    // Use the content size excluding divider pixels for percent calculation
+    const totalDividerCount =
+      iframeContainer.querySelectorAll('.iframe-divider').length;
+    const dividerPx = totalDividerCount * 4; // keep in sync with size.js
     const containerSize = isVerticalLayout()
       ? iframeContainer.clientHeight
       : iframeContainer.clientWidth;
-    const deltaPercentage = (delta / containerSize) * 100;
+    const effectiveSize = Math.max(1, containerSize - dividerPx);
+    const deltaPercentage = (delta / effectiveSize) * 100;
 
     const { leftWrapper, rightWrapper, leftIndex, rightIndex } = dragState;
 
@@ -46,13 +52,12 @@ export const addDividerDragFunctionality = (divider) => {
       const expectedTotal = startSizes[leftIndex] + startSizes[rightIndex];
 
       if (Math.abs(totalSize - expectedTotal) < 0.1) {
-        if (isVerticalLayout()) {
-          leftWrapper.style.height = `${clampedLeftSize}%`;
-          rightWrapper.style.height = `${clampedRightSize}%`;
-        } else {
-          leftWrapper.style.width = `${clampedLeftSize}%`;
-          rightWrapper.style.width = `${clampedRightSize}%`;
-        }
+        // Persist new ratios and recalc sizes via calc() including divider pixels
+        /** @type {HTMLElement} */ (leftWrapper).dataset.ratio =
+          String(clampedLeftSize);
+        /** @type {HTMLElement} */ (rightWrapper).dataset.ratio =
+          String(clampedRightSize);
+        recalcAllWrapperSizes(iframeContainer, isVerticalLayout());
       }
     }
   };
@@ -108,11 +113,9 @@ export const addDividerDragFunctionality = (divider) => {
       .map((x) => x.el);
 
     startSizes = wrappersSorted.map((wrapper) => {
-      if (isVerticalLayout()) {
-        return parseFloat(wrapper.style.height);
-      } else {
-        return parseFloat(wrapper.style.width);
-      }
+      const ds = /** @type {HTMLElement} */ (wrapper).dataset;
+      const v = ds && ds.ratio ? Number.parseFloat(ds.ratio) : NaN;
+      return Number.isFinite(v) ? v : 100 / wrappersSorted.length;
     });
 
     const dividerOrder = Number.parseInt(

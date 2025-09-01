@@ -1,6 +1,7 @@
 import { appState } from './state.js';
 import { addDividerDragFunctionality } from './drag.js';
 import { rebuildInterface } from './rebuild.js';
+import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 
 /**
  * Attach a hover-visible plus button to a divider that opens a tab picker.
@@ -231,9 +232,13 @@ const insertAtDivider = (divider, url) => {
   if (isVerticalLayout) {
     newDivider.className +=
       ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+    /** @type {HTMLElement} */ (newDivider).style.height = '4px';
+    /** @type {HTMLElement} */ (newDivider).style.width = '';
   } else {
     newDivider.className +=
       ' m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
+    /** @type {HTMLElement} */ (newDivider).style.width = '4px';
+    /** @type {HTMLElement} */ (newDivider).style.height = '';
   }
   /** @type {HTMLElement} */ (newDivider).style.order = String(
     dividerOrder + 2,
@@ -242,24 +247,21 @@ const insertAtDivider = (divider, url) => {
   addDividerDragFunctionality(newDivider);
   attachDividerPlus(newDivider);
 
-  // Rebalance sizes equally across all wrappers
+  // Rebalance sizes equally across all wrappers as ratios and recalc CSS sizes
   const allWrappers = /** @type {NodeListOf<HTMLDivElement>} */ (
     iframeContainer.querySelectorAll('.iframe-wrapper')
   );
   const newRatio = 100 / allWrappers.length;
   allWrappers.forEach((w) => {
-    if (isVerticalLayout) {
-      w.style.height = `${newRatio}%`;
-      w.style.width = '100%';
-    } else {
-      w.style.width = `${newRatio}%`;
-      w.style.height = '100%';
-    }
+    /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
+    applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
   });
 
   // Recreate menus and normalize order/url
   rebuildInterface();
   updateDividerPlusVisibility();
+  // Ensure final calc sizes consider the new divider count
+  recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
 };
 
 /**
@@ -321,9 +323,13 @@ const insertAtEdge = (position, url) => {
     if (isVerticalLayout) {
       divider.className +=
         ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+      /** @type {HTMLElement} */ (divider).style.height = '4px';
+      /** @type {HTMLElement} */ (divider).style.width = '';
     } else {
       divider.className +=
         ' m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
+      /** @type {HTMLElement} */ (divider).style.width = '4px';
+      /** @type {HTMLElement} */ (divider).style.height = '';
     }
     newWrapper.insertAdjacentElement('afterend', divider);
     addDividerDragFunctionality(divider);
@@ -335,9 +341,13 @@ const insertAtEdge = (position, url) => {
     if (isVerticalLayout) {
       divider.className +=
         ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+      /** @type {HTMLElement} */ (divider).style.height = '4px';
+      /** @type {HTMLElement} */ (divider).style.width = '';
     } else {
       divider.className +=
         ' m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
+      /** @type {HTMLElement} */ (divider).style.width = '4px';
+      /** @type {HTMLElement} */ (divider).style.height = '';
     }
     last.insertAdjacentElement('afterend', divider);
     addDividerDragFunctionality(divider);
@@ -351,17 +361,13 @@ const insertAtEdge = (position, url) => {
   );
   const newRatio = 100 / allWrappers.length;
   allWrappers.forEach((w) => {
-    if (isVerticalLayout) {
-      w.style.height = `${newRatio}%`;
-      w.style.width = '100%';
-    } else {
-      w.style.width = `${newRatio}%`;
-      w.style.height = '100%';
-    }
+    /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
+    applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
   });
 
   rebuildInterface();
   updateDividerPlusVisibility();
+  recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
 };
 
 /**

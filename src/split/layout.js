@@ -1,6 +1,7 @@
 import { appState } from './state.js';
 import { updateCssOrder } from './ordering.js';
 import { updateUrlWithState } from './url.js';
+import { recalcAllWrapperSizes } from './size.js';
 
 export const applyLayout = () => {
   const iframeContainer = appState.getContainer();
@@ -36,27 +37,21 @@ export const applyLayout = () => {
     }
   });
 
-  wrappers.forEach((wrapper) => {
-    if (isVerticalLayout) {
-      const widthRatio =
-        parseFloat(wrapper.style.width) || 100 / wrappers.length;
-      wrapper.style.height = `${widthRatio}%`;
-      wrapper.style.width = '100%';
-    } else {
-      const heightRatio =
-        parseFloat(wrapper.style.height) || 100 / wrappers.length;
-      wrapper.style.width = `${heightRatio}%`;
-      wrapper.style.height = '100%';
-    }
-  });
+  // Recalculate wrapper sizes using stored ratios and divider count
+  recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
 
+  // Enforce fixed 4px thickness (Tailwind h-1/w-1) for dividers
   dividers.forEach((divider) => {
     if (isVerticalLayout) {
       divider.className =
         'iframe-divider m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+      /** @type {HTMLElement} */ (divider).style.height = '4px';
+      /** @type {HTMLElement} */ (divider).style.width = '';
     } else {
       divider.className =
         'iframe-divider m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
+      /** @type {HTMLElement} */ (divider).style.width = '4px';
+      /** @type {HTMLElement} */ (divider).style.height = '';
     }
   });
 

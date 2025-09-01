@@ -1,6 +1,7 @@
 import { appState } from './state.js';
 import { rebuildInterface } from './rebuild.js';
 import { updateDividerPlusVisibility } from './insert.js';
+import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 
 const closeTabIfSingleRemaining = () => {
   const remaining = document.querySelectorAll('.iframe-wrapper').length;
@@ -69,15 +70,19 @@ export const removeIframe = (index) => {
     const remainingWrappers = document.querySelectorAll('.iframe-wrapper');
     const newRatio = 100 / remainingWrappers.length;
     remainingWrappers.forEach((wrapper) => {
-      if (isVerticalLayout) {
-        /** @type {HTMLElement} */ (wrapper).style.height = `${newRatio}%`;
-      } else {
-        /** @type {HTMLElement} */ (wrapper).style.width = `${newRatio}%`;
-      }
+      /** @type {HTMLElement} */ (wrapper).dataset.ratio = String(newRatio);
+      applyWrapperPrimarySize(
+        /** @type {HTMLDivElement} */ (wrapper),
+        newRatio,
+        isVerticalLayout,
+        iframeContainer,
+      );
     });
 
     rebuildInterface();
     updateDividerPlusVisibility();
+    // Recalc in case divider count changed
+    recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
     closeTabIfSingleRemaining();
   }
 };

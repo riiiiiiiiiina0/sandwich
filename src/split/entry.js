@@ -7,6 +7,7 @@ import {
   updateDividerPlusVisibility,
   attachEdgePlusButtons,
 } from './insert.js';
+import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const iframeContainer = /** @type {HTMLDivElement} */ (
@@ -51,13 +52,15 @@ document.addEventListener('DOMContentLoaded', () => {
     iframeWrapper.className =
       'iframe-wrapper group relative flex-shrink-0 flex-grow-0';
     /** @type {HTMLElement} */ (iframeWrapper).style.order = String(index * 2);
-    if (isVerticalLayout) {
-      iframeWrapper.style.height = `${ratios[index]}%`;
-      iframeWrapper.style.width = '100%';
-    } else {
-      iframeWrapper.style.width = `${ratios[index]}%`;
-      iframeWrapper.style.height = '100%';
-    }
+    /** @type {HTMLElement} */ (iframeWrapper).dataset.ratio = String(
+      ratios[index],
+    );
+    applyWrapperPrimarySize(
+      iframeWrapper,
+      ratios[index],
+      isVerticalLayout,
+      iframeContainer,
+    );
 
     const iframe = /** @type {HTMLIFrameElement} */ (
       document.createElement('iframe')
@@ -72,12 +75,12 @@ document.addEventListener('DOMContentLoaded', () => {
       iframe.style.height = '100%';
       iframe.style.width = '100%';
       iframe.className =
-        'resizable-iframe w-full h-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
+        'resizable-iframe w-full h-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
     } else {
       iframe.style.width = '100%';
       iframe.style.height = '100%';
       iframe.className =
-        'resizable-iframe h-full w-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
+        'resizable-iframe h-full w-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
     }
 
     iframeWrapper.appendChild(iframe);
@@ -89,7 +92,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (index < urls.length - 1) {
       const divider = document.createElement('div');
-      divider.className = 'iframe-divider group relative';
+      divider.className =
+        'iframe-divider group relative hover:bg-blue-400 transition-colors delay-300';
       if (isVerticalLayout) {
         divider.className +=
           ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
@@ -105,4 +109,6 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   // After initial creation, ensure plus visibility matches count
   updateDividerPlusVisibility();
+  // Recalculate all wrapper sizes once with final divider count
+  recalcAllWrapperSizes(iframeContainer, appState.getIsVerticalLayout());
 });

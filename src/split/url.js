@@ -1,4 +1,5 @@
 import { appState } from './state.js';
+import { getWrapperRatioPercent } from './size.js';
 
 export const updateUrlWithState = () => {
   const iframeContainer = appState.getContainer();
@@ -19,13 +20,11 @@ export const updateUrlWithState = () => {
     .sort((a, b) => a.orderValue - b.orderValue)
     .map((x) => x.el);
 
-  const currentRatios = wrappersSorted.map((wrapper) => {
-    if (isVerticalLayout) {
-      return parseFloat(wrapper.style.height).toFixed(1);
-    } else {
-      return parseFloat(wrapper.style.width).toFixed(1);
-    }
-  });
+  const defaultPercent =
+    wrappersSorted.length > 0 ? 100 / wrappersSorted.length : 100;
+  const currentRatios = wrappersSorted.map((wrapper) =>
+    getWrapperRatioPercent(wrapper, defaultPercent).toFixed(1),
+  );
 
   const currentUrls = wrappersSorted.map((wrapper) => {
     const iframe = /** @type {HTMLIFrameElement | null} */ (
