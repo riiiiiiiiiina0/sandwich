@@ -1,31 +1,15 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <title>Split Screen</title>
   <link href="libs/daisyui@5.css" rel="stylesheet" type="text/css" />
   <script src="libs/tailwindcss@4.js"></script>
-  <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-      width: 100%;
-      overflow: hidden;
-    }
-    #iframe-container {
-      display: flex;
-      height: 100vh;
-      width: 100vw;
-    }
-    iframe {
-      height: 100%;
-      border: 1px solid #ccc;
-      box-sizing: border-box;
-    }
-  </style>
 </head>
-<body>
-  <div id="iframe-container"></div>
+
+<body class="m-0 p-0 h-full w-full overflow-hidden">
+  <div id="iframe-container" class="flex h-screen w-screen"></div>
   <script src="split.js"></script>
 </body>
+
 </html>
