@@ -8,7 +8,7 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
 
   const menu = document.createElement('div');
   menu.className =
-    'iframe-menu absolute top-0 left-0 bg-white border border-gray-300 rounded-br-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 flex gap-[2px] p-[2px] pointer-events-auto';
+    'iframe-menu absolute -top-[1px] left-[50%] -translate-x-1/2 bg-white border border-gray-300 rounded-b-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 flex gap-[2px] p-[2px] pointer-events-auto';
 
   const layoutBtn = document.createElement('button');
   layoutBtn.className =
