@@ -9,7 +9,9 @@
     "48": "icons/icon-48x48.png",
     "128": "icons/icon-128x128.png"
   },
-  "action": {},
+  "action": {
+    "default_title": "Sandwich Bear"
+  },
   "permissions": [
     "tabs",
     "declarativeNetRequest"
