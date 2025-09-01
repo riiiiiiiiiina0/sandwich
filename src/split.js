@@ -231,6 +231,36 @@ document.addEventListener('DOMContentLoaded', () => {
     rebuildInterface();
   };
 
+  // Close the current tab if only one iframe remains
+  const closeTabIfSingleRemaining = () => {
+    const remaining = document.querySelectorAll('.iframe-wrapper').length;
+    if (remaining === 1) {
+      try {
+        if (
+          typeof chrome !== 'undefined' &&
+          chrome.tabs &&
+          typeof chrome.tabs.getCurrent === 'function'
+        ) {
+          chrome.tabs.getCurrent((tab) => {
+            if (chrome.runtime && chrome.runtime.lastError) {
+              window.close();
+              return;
+            }
+            if (tab && typeof tab.id === 'number') {
+              chrome.tabs.remove(tab.id);
+            } else {
+              window.close();
+            }
+          });
+        } else {
+          window.close();
+        }
+      } catch (_e) {
+        window.close();
+      }
+    }
+  };
+
   // Function to remove iframe
   const removeIframe = (index) => {
     const wrappers = Array.from(iframeContainer.children).filter((child) =>
@@ -277,6 +307,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Rebuild the interface
       rebuildInterface();
+
+      // If only one iframe remains, close this tab
+      closeTabIfSingleRemaining();
     }
   };
 
