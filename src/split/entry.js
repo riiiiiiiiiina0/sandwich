@@ -2,6 +2,11 @@ import { appState } from './state.js';
 import { applyLayout } from './layout.js';
 import { createIframeMenu } from './menu.js';
 import { addDividerDragFunctionality } from './drag.js';
+import {
+  attachDividerPlus,
+  updateDividerPlusVisibility,
+  attachEdgePlusButtons,
+} from './insert.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const iframeContainer = /** @type {HTMLDivElement} */ (
@@ -37,6 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   applyLayout();
+  attachEdgePlusButtons();
 
   urls.forEach((url, index) => {
     const isVerticalLayout = appState.getIsVerticalLayout();
@@ -83,7 +89,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (index < urls.length - 1) {
       const divider = document.createElement('div');
-      divider.className = 'iframe-divider';
+      divider.className = 'iframe-divider group relative';
       if (isVerticalLayout) {
         divider.className +=
           ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
@@ -94,6 +100,9 @@ document.addEventListener('DOMContentLoaded', () => {
       /** @type {HTMLElement} */ (divider).style.order = String(index * 2 + 1);
       iframeContainer.appendChild(divider);
       addDividerDragFunctionality(divider);
+      attachDividerPlus(divider);
     }
   });
+  // After initial creation, ensure plus visibility matches count
+  updateDividerPlusVisibility();
 });

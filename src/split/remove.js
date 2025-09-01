@@ -1,5 +1,6 @@
 import { appState } from './state.js';
 import { rebuildInterface } from './rebuild.js';
+import { updateDividerPlusVisibility } from './insert.js';
 
 const closeTabIfSingleRemaining = () => {
   const remaining = document.querySelectorAll('.iframe-wrapper').length;
@@ -76,6 +77,7 @@ export const removeIframe = (index) => {
     });
 
     rebuildInterface();
+    updateDividerPlusVisibility();
     closeTabIfSingleRemaining();
   }
 };
