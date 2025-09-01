@@ -4,11 +4,43 @@ document.addEventListener('DOMContentLoaded', () => {
   );
   const urlParams = new URLSearchParams(window.location.search);
   const urlsParam = urlParams.get('urls');
+  const ratiosParam = urlParams.get('ratios');
+
+  // Function to update URL with current ratios
+  const updateUrlWithRatios = () => {
+    const iframes = /** @type {NodeListOf<HTMLIFrameElement>} */ (
+      document.querySelectorAll('.resizable-iframe')
+    );
+    const currentRatios = Array.from(iframes).map((iframe) =>
+      parseFloat(iframe.style.width).toFixed(1),
+    );
+
+    const newUrl = new URL(window.location.href);
+    newUrl.searchParams.set('ratios', currentRatios.join(','));
+    window.history.replaceState({}, '', newUrl.toString());
+  };
 
   if (urlsParam) {
     const urls = urlsParam.split(',').map((url) => decodeURIComponent(url));
     const numIframes = urls.length;
-    const iframeWidth = 100 / numIframes;
+
+    // Parse ratios or default to equal distribution
+    let ratios;
+    if (ratiosParam) {
+      ratios = ratiosParam.split(',').map((ratio) => parseFloat(ratio));
+      // Validate ratios - they should sum to 100 and be positive
+      const totalRatio = ratios.reduce((sum, ratio) => sum + ratio, 0);
+      if (
+        ratios.length !== numIframes ||
+        Math.abs(totalRatio - 100) > 0.1 ||
+        ratios.some((ratio) => ratio <= 0)
+      ) {
+        // Invalid ratios, fall back to equal distribution
+        ratios = Array(numIframes).fill(100 / numIframes);
+      }
+    } else {
+      ratios = Array(numIframes).fill(100 / numIframes);
+    }
 
     urls.forEach((url, index) => {
       // Create iframe
@@ -21,7 +53,7 @@ document.addEventListener('DOMContentLoaded', () => {
         'allow-same-origin allow-scripts allow-forms allow-popups',
       );
       iframe.setAttribute('allow', 'fullscreen');
-      iframe.style.width = `${iframeWidth}%`;
+      iframe.style.width = `${ratios[index]}%`;
       iframe.className =
         'resizable-iframe h-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
 
@@ -95,15 +127,23 @@ document.addEventListener('DOMContentLoaded', () => {
             document.body.style.cursor = '';
 
             // Re-enable pointer events on iframes
-            const iframes = document.querySelectorAll('.resizable-iframe');
+            const iframes = /** @type {NodeListOf<HTMLIFrameElement>} */ (
+              document.querySelectorAll('.resizable-iframe')
+            );
             iframes.forEach((iframe) => {
               iframe.style.pointerEvents = 'auto';
             });
 
-            // Release mouse capture
-            if (divider.releaseCapture) {
+            // Release mouse capture (IE legacy support)
+            if (
+              'releaseCapture' in divider &&
+              typeof divider.releaseCapture === 'function'
+            ) {
               divider.releaseCapture();
             }
+
+            // Update URL with new ratios
+            updateUrlWithRatios();
 
             // Remove event listeners
             document.removeEventListener('mousemove', handleMouseMove);
@@ -144,8 +184,11 @@ document.addEventListener('DOMContentLoaded', () => {
             iframe.style.pointerEvents = 'none';
           });
 
-          // Capture mouse to handle fast movements
-          if (divider.setCapture) {
+          // Capture mouse to handle fast movements (IE legacy support)
+          if (
+            'setCapture' in divider &&
+            typeof divider.setCapture === 'function'
+          ) {
             divider.setCapture();
           }
 
