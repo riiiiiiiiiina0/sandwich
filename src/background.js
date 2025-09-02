@@ -230,3 +230,10 @@ chrome.action.onClicked.addListener(async (currentTab) => {
     console.error('Failed to open split page from highlighted tabs:', error);
   }
 });
+
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.action === 'openAnchorLink') {
+    // The tabs permission is required for chrome.tabs.create
+    chrome.tabs.create({ url: message.url });
+  }
+});
