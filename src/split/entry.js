@@ -72,6 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.createElement('iframe')
     );
     iframe.src = url;
+    iframe.name = 'split-page-iframe';
     iframe.setAttribute(
       'sandbox',
       'allow-same-origin allow-scripts allow-forms allow-popups',
