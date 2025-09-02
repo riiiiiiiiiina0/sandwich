@@ -46,5 +46,34 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
   removeBtn.addEventListener('click', () => removeIframe(index));
   menu.appendChild(removeBtn);
 
+  // Detach to new browser tab
+  const detachBtn = document.createElement('button');
+  detachBtn.className =
+    'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+  detachBtn.innerText = '↗️';
+  detachBtn.title = 'Open in new tab';
+  detachBtn.addEventListener('click', async () => {
+    try {
+      const iframe = /** @type {HTMLIFrameElement|null} */ (
+        _iframeWrapper.querySelector('iframe')
+      );
+      if (!iframe) return;
+      const liveSrc = iframe.getAttribute('data-sb-current-url');
+      const originalSrc = iframe.getAttribute('src');
+      const url =
+        (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
+      if (!url) return;
+      try {
+        await chrome.tabs.create({ url, active: true });
+      } catch (_e) {
+        // no-op
+      }
+      removeIframe(index);
+    } catch (_e) {
+      // no-op
+    }
+  });
+  menu.appendChild(detachBtn);
+
   return menu;
 };
