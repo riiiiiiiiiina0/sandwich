@@ -1,95 +1,46 @@
 // Background script to remove headers that prevent iframe loading
 
 chrome.runtime.onInstalled.addListener(() => {
-  // Remove headers that prevent iframe loading
-  const rules = [
-    {
-      id: 1,
-      priority: 1,
-      action: {
-        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
-        responseHeaders: [
-          {
-            header: 'X-Frame-Options',
-            operation: /** @type {'remove'} */ ('remove'),
-          },
-        ],
-      },
-      condition: {
-        urlFilter: '*',
-        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
-          'main_frame',
-          'sub_frame',
-        ]),
-      },
-    },
-    {
-      id: 2,
-      priority: 1,
-      action: {
-        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
-        responseHeaders: [
-          {
-            header: 'Frame-Options',
-            operation: /** @type {'remove'} */ ('remove'),
-          },
-        ],
-      },
-      condition: {
-        urlFilter: '*',
-        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
-          'main_frame',
-          'sub_frame',
-        ]),
-      },
-    },
-    {
-      id: 3,
-      priority: 1,
-      action: {
-        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
-        responseHeaders: [
-          {
-            header: 'Content-Security-Policy',
-            operation: /** @type {'remove'} */ ('remove'),
-          },
-        ],
-      },
-      condition: {
-        urlFilter: '*',
-        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
-          'main_frame',
-          'sub_frame',
-        ]),
-      },
-    },
-    {
-      id: 4,
-      priority: 1,
-      action: {
-        type: /** @type {'modifyHeaders'} */ ('modifyHeaders'),
-        responseHeaders: [
-          {
-            header: 'Content-Security-Policy-Report-Only',
-            operation: /** @type {'remove'} */ ('remove'),
-          },
-        ],
-      },
-      condition: {
-        urlFilter: '*',
-        resourceTypes: /** @type {('main_frame'|'sub_frame')[]} */ ([
-          'main_frame',
-          'sub_frame',
-        ]),
-      },
-    },
-  ];
-
   // Remove existing rules and add new ones
   chrome.declarativeNetRequest
     .updateDynamicRules({
-      removeRuleIds: [1, 2, 3, 4],
-      addRules: rules,
+      removeRuleIds: [1],
+      addRules: [
+        {
+          id: 1,
+          condition: {
+            urlFilter: '*',
+            resourceTypes: [
+              'sub_frame',
+              'xmlhttprequest',
+              'websocket',
+              'main_frame',
+              'other',
+            ],
+          },
+          action: {
+            type: 'modifyHeaders',
+            responseHeaders: [
+              {
+                header: 'X-Frame-Options',
+                operation: 'remove',
+              },
+              {
+                header: 'Frame-Options',
+                operation: 'remove',
+              },
+              {
+                header: 'Content-Security-Policy',
+                operation: 'remove',
+              },
+              {
+                header: 'Content-Security-Policy-Report-Only',
+                operation: 'remove',
+              },
+            ],
+          },
+        },
+      ],
     })
     .then(() => {
       console.log(
