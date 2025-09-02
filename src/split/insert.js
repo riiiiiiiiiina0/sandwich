@@ -37,7 +37,7 @@ export const attachDividerPlus = (divider) => {
  * Open a floating picker of http(s) tabs grouped by window near the click.
  * @param {HTMLDivElement|null} context
  * @param {{x:number,y:number}} anchor
- * @param {(url:string)=>void} [onSelect]
+ * @param {(url:string)=>HTMLIFrameElement|null|undefined} [onSelect]
  */
 const openTabPicker = async (context, anchor, onSelect) => {
   closeExistingPicker();
@@ -141,8 +141,33 @@ const openTabPicker = async (context, anchor, onSelect) => {
           e.stopPropagation();
           const url = String(tab.url || '');
           if (url) {
-            if (typeof onSelect === 'function') onSelect(url);
-            else insertAtDivider(/** @type {HTMLDivElement} */ (context), url);
+            /** @type {HTMLIFrameElement|null|undefined} */
+            let createdIframe;
+            if (typeof onSelect === 'function') {
+              createdIframe = onSelect(url);
+            } else {
+              createdIframe = insertAtDivider(
+                /** @type {HTMLDivElement} */ (context),
+                url,
+              );
+            }
+            if (typeof tab.id === 'number') {
+              const maybeClose = () => {
+                try {
+                  chrome.tabs.remove(tab.id || -1);
+                } catch (_e) {
+                  // no-op
+                }
+              };
+              if (createdIframe && createdIframe.addEventListener) {
+                createdIframe.addEventListener('load', maybeClose, {
+                  once: true,
+                });
+              } else {
+                // Fallback: close immediately after initiating insertion
+                maybeClose();
+              }
+            }
           }
           dismiss();
         });
@@ -171,6 +196,7 @@ const closeExistingPicker = () => {
  * Insert a new iframe at the divider position and rebalance sizes.
  * @param {HTMLDivElement} divider
  * @param {string} url
+ * @returns {HTMLIFrameElement}
  */
 const insertAtDivider = (divider, url) => {
   const iframeContainer = appState.getContainer();
@@ -268,12 +294,14 @@ const insertAtDivider = (divider, url) => {
   // Ensure final calc sizes consider the new divider count
   recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
   updateDocumentTitleFromIframes();
+  return iframe;
 };
 
 /**
  * Insert at the head or tail of wrappers.
  * @param {'head'|'tail'} position
  * @param {string} url
+ * @returns {HTMLIFrameElement}
  */
 const insertAtEdge = (position, url) => {
   const iframeContainer = appState.getContainer();
@@ -376,6 +404,7 @@ const insertAtEdge = (position, url) => {
   updateDividerPlusVisibility();
   recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
   updateDocumentTitleFromIframes();
+  return iframe;
 };
 
 /**
