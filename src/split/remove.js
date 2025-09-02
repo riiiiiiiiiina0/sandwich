@@ -5,8 +5,26 @@ import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 import { updateDocumentTitleFromIframes } from './title.js';
 
 const closeTabIfSingleRemaining = () => {
-  const remaining = document.querySelectorAll('.iframe-wrapper').length;
-  if (remaining === 1) {
+  const remainingWrappers = document.querySelectorAll('.iframe-wrapper');
+  if (remainingWrappers.length === 1) {
+    const lastWrapper = remainingWrappers[0];
+    const iframe = /** @type {HTMLIFrameElement | null} */ (
+      lastWrapper.querySelector('iframe')
+    );
+    if (!iframe) return;
+
+    const liveSrc = iframe.getAttribute('data-sb-current-url');
+    const originalSrc = iframe.getAttribute('src');
+    const url = (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
+
+    if (url) {
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.create({ url: url });
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
     try {
       if (
         typeof chrome !== 'undefined' &&
