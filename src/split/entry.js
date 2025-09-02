@@ -77,7 +77,10 @@ document.addEventListener('DOMContentLoaded', () => {
       'sandbox',
       'allow-same-origin allow-scripts allow-forms allow-popups',
     );
-    iframe.setAttribute('allow', 'fullscreen');
+    iframe.setAttribute(
+      'allow',
+      'fullscreen; clipboard-read; clipboard-write',
+    );
     if (isVerticalLayout) {
       iframe.style.height = '100%';
       iframe.style.width = '100%';
