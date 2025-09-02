@@ -18,6 +18,32 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
   layoutBtn.addEventListener('click', toggleLayout);
   menu.appendChild(layoutBtn);
 
+  const reloadBtn = document.createElement('button');
+  reloadBtn.className =
+    'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+  reloadBtn.innerText = '🔄';
+  reloadBtn.title = 'Reload';
+  reloadBtn.addEventListener('click', () => {
+    const iframe = /** @type {HTMLIFrameElement|null} */ (
+      _iframeWrapper.querySelector('iframe')
+    );
+    if (iframe && iframe.dataset.frameId) {
+      const frameId = parseInt(iframe.dataset.frameId, 10);
+      // @ts-ignore
+      chrome.tabs.getCurrent((tab) => {
+        if (tab && tab.id) {
+          // @ts-ignore
+          chrome.tabs.sendMessage(
+            tab.id,
+            { action: 'reloadFrame' },
+            { frameId: frameId },
+          );
+        }
+      });
+    }
+  });
+  menu.appendChild(reloadBtn);
+
   if (index > 0) {
     const moveLeftBtn = document.createElement('button');
     moveLeftBtn.className =

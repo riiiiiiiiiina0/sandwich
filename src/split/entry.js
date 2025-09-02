@@ -16,6 +16,21 @@ import { startContentTitleBridge } from './title.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   startContentTitleBridge();
+
+  chrome.runtime.onMessage.addListener((message, sender) => {
+    if (message.action === 'registerFrame') {
+      const { frameName } = message;
+      if (frameName && sender.frameId) {
+        const iframe = /** @type {HTMLIFrameElement|null} */ (
+          document.querySelector(`iframe[name="${frameName}"]`)
+        );
+        if (iframe) {
+          iframe.dataset.frameId = String(sender.frameId);
+        }
+      }
+    }
+  });
+
   const iframeContainer = /** @type {HTMLDivElement} */ (
     document.getElementById('iframe-container')
   );
@@ -72,7 +87,7 @@ document.addEventListener('DOMContentLoaded', () => {
       document.createElement('iframe')
     );
     iframe.src = url;
-    iframe.name = 'split-page-iframe';
+    iframe.name = `sb-iframe-${index}`;
     iframe.setAttribute(
       'sandbox',
       'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',

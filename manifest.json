@@ -29,7 +29,8 @@
         "<all_urls>"
       ],
       "js": [
-        "src/content/title-probe.js"
+        "src/content/title-probe.js",
+        "src/content/frame-connector.js"
       ],
       "run_at": "document_start",
       "all_frames": true,
