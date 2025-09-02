@@ -75,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
     iframe.name = 'split-page-iframe';
     iframe.setAttribute(
       'sandbox',
-      'allow-same-origin allow-scripts allow-forms allow-popups',
+      'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
     );
     iframe.setAttribute(
       'allow',
