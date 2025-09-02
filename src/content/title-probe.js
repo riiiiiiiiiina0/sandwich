@@ -1,84 +1,103 @@
 (() => {
-  const safeGetTitle = () => {
-    try {
-      return document.title || '';
-    } catch (_e) {
-      return '';
-    }
-  };
+  let key = '';
 
-  const sendTitle = () => {
+  /**
+   * Send an update to the background script with the current title and href.
+   * @param {string} title
+   * @param {string} url
+   */
+  const sendUpdate = (title, url) => {
+    console.log(
+      `[title-probe (${location.href})] sendUpdate: title="${title}" url="${url}"`,
+    );
     try {
-      const href = location.href;
-      const title = safeGetTitle();
       if (
         typeof chrome !== 'undefined' &&
         chrome.runtime &&
         chrome.runtime.sendMessage
       ) {
-        chrome.runtime.sendMessage({ type: 'sb:title', url: href, title });
+        chrome.runtime.sendMessage({ type: 'sb:title', key, url, title });
       }
     } catch (_e) {
       // no-op
     }
   };
 
-  // Initial send when script loads
-  try {
-    sendTitle();
-  } catch (_e) {}
-
-  // Observe <title> changes
-  try {
-    const observeTitle = () => {
-      const head = document.head || document.querySelector('head');
-      if (!head) return;
-      const titleEl = head.querySelector('title');
-      const target = titleEl || head;
-      const observer = new MutationObserver(() => {
-        sendTitle();
-      });
-      observer.observe(target, {
-        subtree: true,
-        characterData: true,
-        childList: true,
-      });
-    };
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', observeTitle, {
-        once: true,
-      });
-    } else {
-      observeTitle();
+  let _lastUrl = '';
+  let _lastTitle = '';
+  const notify = () => {
+    const title = document.title || '';
+    const url = location.href || '';
+    if (title !== _lastTitle || url !== _lastUrl) {
+      _lastTitle = title;
+      _lastUrl = url;
+      sendUpdate(title, url);
     }
-  } catch (_e) {}
+  };
 
-  // History API hooks for SPA navigations
+  if (
+    document.readyState === 'complete' ||
+    document.readyState === 'interactive'
+  ) {
+    notify();
+  } else {
+    window.addEventListener('DOMContentLoaded', notify, { once: true });
+    window.addEventListener('load', notify, { once: true });
+  }
+
+  window.addEventListener('popstate', notify);
+  window.addEventListener('hashchange', notify);
+
   try {
-    const wrapHistory = (method) => {
-      const orig = history[method];
-      if (typeof orig === 'function') {
-        history[method] = function (...args) {
-          const res = orig.apply(this, args);
-          setTimeout(sendTitle, 0);
-          return res;
-        };
-      }
+    const origPushState = history.pushState?.bind(history);
+    const origReplaceState = history.replaceState?.bind(history);
+    if (origPushState) {
+      history.pushState = function (...args) {
+        const ret = origPushState(...args);
+        try {
+          notify();
+        } catch (_e) {}
+        return ret;
+      };
+    }
+    if (origReplaceState) {
+      history.replaceState = function (...args) {
+        const ret = origReplaceState(...args);
+        try {
+          notify();
+        } catch (_e) {}
+        return ret;
+      };
+    }
+  } catch (_e) {
+    // no-op
+  }
+
+  try {
+    const ensureTitleObserver = () => {
+      const titleEl = document.querySelector('title');
+      if (!titleEl) return false;
+      const mo = new MutationObserver(() => notify());
+      mo.observe(titleEl, {
+        childList: true,
+        characterData: true,
+        subtree: true,
+      });
+      return true;
     };
-    wrapHistory('pushState');
-    wrapHistory('replaceState');
-    window.addEventListener('popstate', () => setTimeout(sendTitle, 0));
-  } catch (_e) {}
+    if (!ensureTitleObserver()) {
+      const headMo = new MutationObserver(() => {
+        if (ensureTitleObserver()) headMo.disconnect();
+      });
+      headMo.observe(document.documentElement, {
+        childList: true,
+        subtree: true,
+      });
+    }
+  } catch (_e) {
+    // no-op
+  }
 
-  // Fallback polling (low frequency)
-  try {
-    let last = safeGetTitle();
-    setInterval(() => {
-      const cur = safeGetTitle();
-      if (cur !== last) {
-        last = cur;
-        sendTitle();
-      }
-    }, 2000);
-  } catch (_e) {}
+  console.log(`[title-probe (${location.href})] loaded`);
+  key = location.href;
 })();

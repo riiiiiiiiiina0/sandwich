@@ -1,4 +1,5 @@
 import { appState } from './state.js';
+import { updateUrlWithState } from './url.js';
 
 /**
  * Return ordered iframe elements based on wrapper order.
@@ -30,20 +31,12 @@ export const getOrderedIframes = () => {
 
 /**
  * Safely derive a readable title for an iframe.
- * Prefers data attribute, then contentDocument.title (same-origin), then hostname, then raw src.
+ * Prefers data attribute, then hostname, then raw src.
  * @param {HTMLIFrameElement} iframe
  */
 const deriveIframeTitle = (iframe) => {
   const dataTitle = iframe.getAttribute('data-sb-title');
   if (dataTitle && dataTitle.trim()) return dataTitle.trim();
-
-  try {
-    const sameOriginTitle = iframe?.contentDocument?.title || '';
-    if (sameOriginTitle && sameOriginTitle.trim())
-      return sameOriginTitle.trim();
-  } catch (_e) {
-    // Cross-origin, ignore
-  }
 
   const src = iframe.getAttribute('src') || iframe.src || '';
   try {
@@ -61,7 +54,7 @@ export const updateDocumentTitleFromIframes = () => {
   try {
     const iframes = getOrderedIframes();
     const titles = iframes.map((ifr) => deriveIframeTitle(ifr)).filter(Boolean);
-    document.title = titles.length ? titles.join(', ') : 'Split';
+    document.title = titles.length ? titles.join(' / ') : 'Sandwich Bear';
   } catch (_e) {
     // no-op
   }
@@ -74,12 +67,6 @@ export const updateDocumentTitleFromIframes = () => {
 export const attachIframeTitleListener = (iframe) => {
   try {
     iframe.addEventListener('load', () => {
-      try {
-        const t = iframe?.contentDocument?.title || '';
-        if (t && t.trim()) iframe.setAttribute('data-sb-title', t.trim());
-      } catch (_e) {
-        // Cross-origin, leave data attribute unchanged
-      }
       updateDocumentTitleFromIframes();
     });
   } catch (_e) {
@@ -127,22 +114,42 @@ export const startContentTitleBridge = () => {
     chrome.runtime.onMessage.addListener((msg, _sender, _sendResponse) => {
       try {
         if (!msg || msg.type !== 'sb:title') return;
+        const key = String(msg.key || '');
         const url = String(msg.url || '');
         const title = String(msg.title || '');
-        if (!url) return;
+        if (!key || !url) return;
+        const keyNorm = normalize(key);
 
         const iframeContainer = appState.getContainer();
         const iframes = /** @type {NodeListOf<HTMLIFrameElement>} */ (
           iframeContainer.querySelectorAll('iframe')
         );
-        const key = normalize(url);
         for (const ifr of Array.from(iframes)) {
           const src = ifr.getAttribute('src') || ifr.src || '';
           if (!src) continue;
-          if (normalize(src) === key) {
+          if (normalize(src) === keyNorm) {
             if (title && title.trim()) {
               ifr.setAttribute('data-sb-title', title.trim());
               updateDocumentTitleFromIframes();
+            }
+            // Always update the current url so split page can reflect navigation
+            try {
+              if (url && url.trim()) {
+                ifr.setAttribute('data-sb-current-url', url.trim());
+                // keep key for matching future messages in case of redirects
+                ifr.setAttribute('data-sb-key', key);
+                // Update split page URL params to reflect latest iframe URLs
+                // Defer to next tick to batch updates if many events come in
+                queueMicrotask(() => {
+                  try {
+                    updateUrlWithState();
+                  } catch (_e) {
+                    // no-op
+                  }
+                });
+              }
+            } catch (_e) {
+              // no-op
             }
           }
         }

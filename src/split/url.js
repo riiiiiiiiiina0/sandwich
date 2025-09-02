@@ -31,8 +31,9 @@ export const updateUrlWithState = () => {
       wrapper.querySelector('iframe')
     );
     if (!iframe) return '';
+    const liveSrc = iframe.getAttribute('data-sb-current-url');
     const originalSrc = iframe.getAttribute('src');
-    return originalSrc || iframe.src || '';
+    return (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
   });
 
   const newUrl = new URL(window.location.href);
