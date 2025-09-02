@@ -55,13 +55,24 @@ export const removeIframe = (index) => {
   const iframeContainer = appState.getContainer();
   const isVerticalLayout = appState.getIsVerticalLayout();
 
-  const wrappers = Array.from(iframeContainer.children).filter((child) =>
-    child.classList.contains('iframe-wrapper'),
+  const wrappers = /** @type {HTMLDivElement[]} */ (
+    Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
   );
 
   if (wrappers.length <= 1) return;
 
-  const wrapperToRemove = wrappers[index];
+  const wrappersSorted = wrappers
+    .map((w, domIndex) => ({
+      el: w,
+      orderValue: Number.parseInt(
+        /** @type {HTMLElement} */ (w).style.order || `${domIndex * 2}`,
+        10,
+      ),
+    }))
+    .sort((a, b) => a.orderValue - b.orderValue)
+    .map((x) => x.el);
+
+  const wrapperToRemove = wrappersSorted[index];
   if (wrapperToRemove) {
     const nextSibling = wrapperToRemove.nextSibling;
     wrapperToRemove.remove();
