@@ -239,7 +239,7 @@ const insertAtDivider = (divider, url) => {
   iframe.name = 'split-page-iframe';
   iframe.setAttribute(
     'sandbox',
-    'allow-same-origin allow-scripts allow-forms allow-popups',
+    'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
   );
   iframe.setAttribute('allow', 'fullscreen');
   if (isVerticalLayout) {
@@ -333,7 +333,7 @@ const insertAtEdge = (position, url) => {
   iframe.name = 'split-page-iframe';
   iframe.setAttribute(
     'sandbox',
-    'allow-same-origin allow-scripts allow-forms allow-popups',
+    'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
   );
   iframe.setAttribute('allow', 'fullscreen');
   if (isVerticalLayout) {
