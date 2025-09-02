@@ -5,8 +5,26 @@ import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 import { updateDocumentTitleFromIframes } from './title.js';
 
 const closeTabIfSingleRemaining = () => {
-  const remaining = document.querySelectorAll('.iframe-wrapper').length;
-  if (remaining === 1) {
+  const remainingWrappers = document.querySelectorAll('.iframe-wrapper');
+  if (remainingWrappers.length === 1) {
+    const lastWrapper = remainingWrappers[0];
+    const iframe = /** @type {HTMLIFrameElement | null} */ (
+      lastWrapper.querySelector('iframe')
+    );
+    if (!iframe) return;
+
+    const liveSrc = iframe.getAttribute('data-sb-current-url');
+    const originalSrc = iframe.getAttribute('src');
+    const url = (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
+
+    if (url) {
+      if (typeof chrome !== 'undefined' && chrome.tabs) {
+        chrome.tabs.create({ url: url });
+      } else {
+        window.open(url, '_blank');
+      }
+    }
+
     try {
       if (
         typeof chrome !== 'undefined' &&
@@ -37,13 +55,24 @@ export const removeIframe = (index) => {
   const iframeContainer = appState.getContainer();
   const isVerticalLayout = appState.getIsVerticalLayout();
 
-  const wrappers = Array.from(iframeContainer.children).filter((child) =>
-    child.classList.contains('iframe-wrapper'),
+  const wrappers = /** @type {HTMLDivElement[]} */ (
+    Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
   );
 
   if (wrappers.length <= 1) return;
 
-  const wrapperToRemove = wrappers[index];
+  const wrappersSorted = wrappers
+    .map((w, domIndex) => ({
+      el: w,
+      orderValue: Number.parseInt(
+        /** @type {HTMLElement} */ (w).style.order || `${domIndex * 2}`,
+        10,
+      ),
+    }))
+    .sort((a, b) => a.orderValue - b.orderValue)
+    .map((x) => x.el);
+
+  const wrapperToRemove = wrappersSorted[index];
   if (wrapperToRemove) {
     const nextSibling = wrapperToRemove.nextSibling;
     wrapperToRemove.remove();
