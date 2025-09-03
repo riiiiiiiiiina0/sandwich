@@ -158,15 +158,35 @@ chrome.action.onClicked.addListener(async (currentTab) => {
             .filter((u) => typeof u === 'string' && u.length > 0);
 
           const baseIndex = (currentTab.index ?? 0) + 1;
-          await Promise.all(
-            urls.map((u, i) =>
+          const newTabs = await Promise.all(
+            urls.map((u) =>
               chrome.tabs.create({
                 url: u,
                 windowId: currentTab.windowId,
-                index: baseIndex + i,
               }),
             ),
           );
+
+          const newTabIds = newTabs
+            .map((tab) => tab.id)
+            .filter((id) => typeof id === 'number');
+
+          if (newTabIds.length > 0) {
+            // If the split page was in a group, move the new tabs into that group.
+            if (
+              typeof currentTab.groupId === 'number' &&
+              currentTab.groupId > -1
+            ) {
+              await chrome.tabs.group({
+                groupId: currentTab.groupId,
+                tabIds: /** @type {number[]} */ (newTabIds),
+              });
+            }
+            // Move the tabs to the desired position.
+            await chrome.tabs.move(/** @type {number[]} */ (newTabIds), {
+              index: baseIndex,
+            });
+          }
         }
       } catch (unsplitErr) {
         console.error('Failed to unsplit tabs:', unsplitErr);
