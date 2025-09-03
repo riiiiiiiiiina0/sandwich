@@ -216,18 +216,23 @@ chrome.action.onClicked.addListener(async (currentTab) => {
     // Create the new split tab at the position of the first of the highlighted tabs,
     // and in the same tab group if they are in one.
     const firstTab = httpTabs[0];
-    /** @type {chrome.tabs.CreateProperties} */
-    const createData = {
+    const newTab = await chrome.tabs.create({
       url: splitUrl,
       windowId: currentTab.windowId,
-      index: firstTab.index,
-    };
-    // The groupId is -1 if the tab is not in a group.
-    if (typeof firstTab.groupId === 'number' && firstTab.groupId > -1) {
-      createData.groupId = firstTab.groupId;
-    }
+    });
 
-    await chrome.tabs.create(createData);
+    if (typeof newTab.id === 'number') {
+      // If the first tab is in a group, move the new split tab into the same group.
+      // This action moves the tab to the end of the group.
+      if (typeof firstTab.groupId === 'number' && firstTab.groupId > -1) {
+        await chrome.tabs.group({
+          groupId: firstTab.groupId,
+          tabIds: newTab.id,
+        });
+      }
+      // Finally, move the tab to the desired index.
+      await chrome.tabs.move(newTab.id, { index: firstTab.index });
+    }
 
     // Close the used highlighted tabs
     try {
