@@ -213,7 +213,21 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       'pages/split.html',
     )}?urls=${urlsParam}`;
 
-    await chrome.tabs.create({ url: splitUrl, windowId: currentTab.windowId });
+    // Create the new split tab at the position of the first of the highlighted tabs,
+    // and in the same tab group if they are in one.
+    const firstTab = httpTabs[0];
+    /** @type {chrome.tabs.CreateProperties} */
+    const createData = {
+      url: splitUrl,
+      windowId: currentTab.windowId,
+      index: firstTab.index,
+    };
+    // The groupId is -1 if the tab is not in a group.
+    if (typeof firstTab.groupId === 'number' && firstTab.groupId > -1) {
+      createData.groupId = firstTab.groupId;
+    }
+
+    await chrome.tabs.create(createData);
 
     // Close the used highlighted tabs
     try {
