@@ -158,15 +158,35 @@ chrome.action.onClicked.addListener(async (currentTab) => {
             .filter((u) => typeof u === 'string' && u.length > 0);
 
           const baseIndex = (currentTab.index ?? 0) + 1;
-          await Promise.all(
-            urls.map((u, i) =>
+          const newTabs = await Promise.all(
+            urls.map((u) =>
               chrome.tabs.create({
                 url: u,
                 windowId: currentTab.windowId,
-                index: baseIndex + i,
               }),
             ),
           );
+
+          const newTabIds = newTabs
+            .map((tab) => tab.id)
+            .filter((id) => typeof id === 'number');
+
+          if (newTabIds.length > 0) {
+            // If the split page was in a group, move the new tabs into that group.
+            if (
+              typeof currentTab.groupId === 'number' &&
+              currentTab.groupId > -1
+            ) {
+              await chrome.tabs.group({
+                groupId: currentTab.groupId,
+                tabIds: /** @type {number[]} */ (newTabIds),
+              });
+            }
+            // Move the tabs to the desired position.
+            await chrome.tabs.move(/** @type {number[]} */ (newTabIds), {
+              index: baseIndex,
+            });
+          }
         }
       } catch (unsplitErr) {
         console.error('Failed to unsplit tabs:', unsplitErr);
@@ -213,7 +233,26 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       'pages/split.html',
     )}?urls=${urlsParam}`;
 
-    await chrome.tabs.create({ url: splitUrl, windowId: currentTab.windowId });
+    // Create the new split tab at the position of the first of the highlighted tabs,
+    // and in the same tab group if they are in one.
+    const firstTab = httpTabs[0];
+    const newTab = await chrome.tabs.create({
+      url: splitUrl,
+      windowId: currentTab.windowId,
+    });
+
+    if (typeof newTab.id === 'number') {
+      // If the first tab is in a group, move the new split tab into the same group.
+      // This action moves the tab to the end of the group.
+      if (typeof firstTab.groupId === 'number' && firstTab.groupId > -1) {
+        await chrome.tabs.group({
+          groupId: firstTab.groupId,
+          tabIds: newTab.id,
+        });
+      }
+      // Finally, move the tab to the desired index.
+      await chrome.tabs.move(newTab.id, { index: firstTab.index });
+    }
 
     // Close the used highlighted tabs
     try {
