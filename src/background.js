@@ -68,7 +68,7 @@ const updateActionTitle = async () => {
     });
     if (!activeTab || typeof activeTab.id !== 'number') return;
 
-    const splitBaseUrl = chrome.runtime.getURL('src/split.html');
+    const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
     let title = 'Sandwich Bear';
 
     if (
@@ -143,7 +143,7 @@ chrome.runtime.onStartup.addListener(() => {
 chrome.action.onClicked.addListener(async (currentTab) => {
   try {
     // If we're currently on the split page, unsplit: open all iframe URLs as tabs and close the split tab
-    const splitBaseUrl = chrome.runtime.getURL('src/split.html');
+    const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
     if (
       typeof currentTab.url === 'string' &&
       currentTab.url.startsWith(splitBaseUrl)
@@ -210,7 +210,7 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       .join(',');
 
     const splitUrl = `${chrome.runtime.getURL(
-      'src/split.html',
+      'pages/split.html',
     )}?urls=${urlsParam}`;
 
     await chrome.tabs.create({ url: splitUrl, windowId: currentTab.windowId });
