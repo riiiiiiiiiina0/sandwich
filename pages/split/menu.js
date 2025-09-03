@@ -44,6 +44,32 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
   });
   menu.appendChild(reloadBtn);
 
+  const backBtn = document.createElement('button');
+  backBtn.className =
+    'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+  backBtn.innerText = '🔙';
+  backBtn.title = 'Back';
+  backBtn.addEventListener('click', () => {
+    const iframe = /** @type {HTMLIFrameElement|null} */ (
+      _iframeWrapper.querySelector('iframe')
+    );
+    if (iframe && iframe.dataset.frameId) {
+      const frameId = parseInt(iframe.dataset.frameId, 10);
+      // @ts-ignore
+      chrome.tabs.getCurrent((tab) => {
+        if (tab && tab.id) {
+          // @ts-ignore
+          chrome.tabs.sendMessage(
+            tab.id,
+            { action: 'goBack' },
+            { frameId: frameId },
+          );
+        }
+      });
+    }
+  });
+  menu.appendChild(backBtn);
+
   if (index > 0) {
     const moveLeftBtn = document.createElement('button');
     moveLeftBtn.className =

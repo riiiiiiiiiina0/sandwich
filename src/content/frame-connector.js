@@ -11,4 +11,7 @@ chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
   if (message.action === 'reloadFrame') {
     window.location.reload();
   }
+  if (message.action === 'goBack') {
+    window.history.back();
+  }
 });
