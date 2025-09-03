@@ -1,6 +1,53 @@
 // Background script to remove headers that prevent iframe loading
 
-chrome.runtime.onInstalled.addListener(() => {
+// Store tab IDs of split pages to efficiently update the uninstall URL.
+let splitTabIds = new Set();
+
+const syncSplitTabIds = async () => {
+  const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
+  const splitTabs = await chrome.tabs.query({ url: `${splitBaseUrl}*` });
+  splitTabIds = new Set(splitTabs.map((t) => t.id).filter((id) => id));
+};
+
+const updateUninstallURL = async () => {
+  try {
+    const allUrls = [];
+    for (const tabId of splitTabIds) {
+      try {
+        const tab = await chrome.tabs.get(tabId);
+        if (tab && tab.url) {
+          const urlObj = new URL(tab.url);
+          const urlsParam = urlObj.searchParams.get('urls');
+          if (urlsParam) {
+            const urls = urlsParam
+              .split(',')
+              .map((s) => decodeURIComponent(s))
+              .filter((u) => u && u.length > 0);
+            allUrls.push(...urls);
+          }
+        }
+      } catch (e) {
+        // Tab might have been closed in the meantime.
+      }
+    }
+
+    let uninstallUrl = chrome.runtime.getURL('pages/restore.html');
+    if (allUrls.length > 0) {
+      const urlsParam = allUrls.map((u) => encodeURIComponent(u)).join(',');
+      uninstallUrl += `?urls=${urlsParam}`;
+    }
+
+    // It is not possible to run code when an extension is uninstalled.
+    // The best we can do is open a page with instructions on how to restore the tabs.
+    // This is why we use setUninstallURL.
+    await chrome.runtime.setUninstallURL(uninstallUrl);
+    console.log('Uninstall URL set to:', uninstallUrl);
+  } catch (error) {
+    console.error('Failed to update uninstall URL:', error);
+  }
+};
+
+chrome.runtime.onInstalled.addListener(async () => {
   // Remove existing rules and add new ones
   chrome.declarativeNetRequest
     .updateDynamicRules({
@@ -50,13 +97,18 @@ chrome.runtime.onInstalled.addListener(() => {
     .catch((error) => {
       console.error('Failed to install header removal rules:', error);
     });
+
+  await syncSplitTabIds();
+  await updateUninstallURL();
 });
 
 // Also handle extension startup
-chrome.runtime.onStartup.addListener(() => {
+chrome.runtime.onStartup.addListener(async () => {
   console.log(
     'Sandwich Bear extension started - frame-blocking headers will be removed',
   );
+  await syncSplitTabIds();
+  await updateUninstallURL();
 });
 
 // Update action title to indicate what clicking will do in current context
@@ -139,6 +191,27 @@ chrome.runtime.onStartup.addListener(() => {
   updateActionTitle();
 });
 
+// Update uninstall URL whenever a split tab is created or removed
+chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
+  const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
+  if (
+    changeInfo.status === 'complete' &&
+    tab.url &&
+    tab.url.startsWith(splitBaseUrl)
+  ) {
+    if (tab.id) {
+      splitTabIds.add(tab.id);
+    }
+    updateUninstallURL();
+  }
+});
+chrome.tabs.onRemoved.addListener((tabId) => {
+  if (splitTabIds.has(tabId)) {
+    splitTabIds.delete(tabId);
+    updateUninstallURL();
+  }
+});
+
 // Handle action button click: open up to the first 4 highlighted tabs in split page
 chrome.action.onClicked.addListener(async (currentTab) => {
   try {
@@ -174,7 +247,12 @@ chrome.action.onClicked.addListener(async (currentTab) => {
 
       if (typeof currentTab.id === 'number') {
         try {
-          await chrome.tabs.remove(currentTab.id);
+          const tabId = currentTab.id;
+          await chrome.tabs.remove(tabId);
+          if (splitTabIds.has(tabId)) {
+            splitTabIds.delete(tabId);
+            await updateUninstallURL();
+          }
         } catch (removeErr) {
           console.error('Failed to close split tab:', removeErr);
         }
@@ -213,7 +291,14 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       'pages/split.html',
     )}?urls=${urlsParam}`;
 
-    await chrome.tabs.create({ url: splitUrl, windowId: currentTab.windowId });
+    const newTab = await chrome.tabs.create({
+      url: splitUrl,
+      windowId: currentTab.windowId,
+    });
+    if (newTab.id) {
+      splitTabIds.add(newTab.id);
+    }
+    await updateUninstallURL();
 
     // Close the used highlighted tabs
     try {
