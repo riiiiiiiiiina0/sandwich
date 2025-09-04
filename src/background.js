@@ -86,8 +86,10 @@ const updateActionTitle = async () => {
               .filter((u) => u && u.length > 0).length
           : 0;
         title = `Restore ${count} tabs`;
+        chrome.action.enable(activeTab.id);
       } catch (_e) {
         title = 'Restore tabs';
+        chrome.action.enable(activeTab.id);
       }
     } else {
       // Not on split page: show Open {N (2<=N<=4)} tabs in split view
@@ -103,9 +105,11 @@ const updateActionTitle = async () => {
       );
       if (httpTabs.length <= 1) {
         title = 'Highlight multiple tabs to open in split view';
+        chrome.action.disable(activeTab.id);
       } else {
         const n = Math.max(2, Math.min(4, httpTabs.length));
         title = `Open ${n} tabs in split view`;
+        chrome.action.enable(activeTab.id);
       }
     }
 
