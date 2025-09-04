@@ -1,4 +1,5 @@
 import { appState } from './state.js';
+import { heroicons } from './heroicons.js';
 import { updateCssOrder } from './ordering.js';
 import { updateUrlWithState } from './url.js';
 import { recalcAllWrapperSizes } from './size.js';
@@ -44,12 +45,12 @@ export const applyLayout = () => {
   dividers.forEach((divider) => {
     if (isVerticalLayout) {
       divider.className =
-        'iframe-divider m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+        'iframe-divider group relative bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 flex-shrink-0 flex-grow-0';
       /** @type {HTMLElement} */ (divider).style.height = '4px';
       /** @type {HTMLElement} */ (divider).style.width = '';
     } else {
       divider.className =
-        'iframe-divider m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
+        'iframe-divider group relative bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 w-1 h-full cursor-col-resize min-w-1 flex-shrink-0 flex-grow-0';
       /** @type {HTMLElement} */ (divider).style.width = '4px';
       /** @type {HTMLElement} */ (divider).style.height = '';
     }
@@ -75,34 +76,55 @@ export const updateButtonLabels = () => {
   wrappers.forEach((wrapper) => {
     const menu = wrapper.querySelector('.iframe-menu');
     if (menu) {
-      const layoutBtn = /** @type {HTMLButtonElement} */ (menu.children[0]);
-      const moveLeftBtn = /** @type {HTMLButtonElement} */ (menu.children[1]);
-      const moveRightBtn = /** @type {HTMLButtonElement} */ (
-        menu.children[menu.children.length - 2]
+      const layoutBtn = /** @type {HTMLButtonElement|null} */ (
+        menu.querySelector('button[data-role="layout"]')
+      );
+      const moveLeftBtn = /** @type {HTMLButtonElement|null} */ (
+        menu.querySelector('button[data-role="move-left"]')
+      );
+      const moveRightBtn = /** @type {HTMLButtonElement|null} */ (
+        menu.querySelector('button[data-role="move-right"]')
       );
 
       if (layoutBtn) {
-        layoutBtn.innerText = isVerticalLayout ? '↔️' : '↕️';
+        const iconName = isVerticalLayout ? 'columns' : 'rows';
+        layoutBtn.innerHTML = heroicons[iconName].svg;
+        const nextSvg = /** @type {SVGElement|null} */ (
+          layoutBtn.querySelector('svg')
+        );
+        if (nextSvg) {
+          const baseRotation =
+            (heroicons[iconName] && heroicons[iconName].rotation) ?? 0;
+          nextSvg.style.transform = `rotate(${baseRotation}deg)`;
+        }
         layoutBtn.title = isVerticalLayout
           ? 'Horizontal layout'
           : 'Vertical layout';
       }
 
-      if (
-        moveLeftBtn &&
-        (moveLeftBtn.innerText.includes('⬅️') ||
-          moveLeftBtn.innerText.includes('⬆️'))
-      ) {
-        moveLeftBtn.innerText = isVerticalLayout ? '⬆️' : '⬅️';
+      if (moveLeftBtn) {
+        const svg = /** @type {SVGElement|null} */ (
+          moveLeftBtn.querySelector('svg')
+        );
+        if (svg) {
+          const baseRotation =
+            (heroicons.moveLeft && heroicons.moveLeft.rotation) ?? 0;
+          const extraRotation = isVerticalLayout ? -90 : 0;
+          svg.style.transform = `rotate(${baseRotation + extraRotation}deg)`;
+        }
         moveLeftBtn.title = isVerticalLayout ? 'Move up' : 'Move left';
       }
 
-      if (
-        moveRightBtn &&
-        (moveRightBtn.innerText.includes('➡️') ||
-          moveRightBtn.innerText.includes('⬇️'))
-      ) {
-        moveRightBtn.innerText = isVerticalLayout ? '⬇️' : '➡️';
+      if (moveRightBtn) {
+        const svg = /** @type {SVGElement|null} */ (
+          moveRightBtn.querySelector('svg')
+        );
+        if (svg) {
+          const baseRotation =
+            (heroicons.moveRight && heroicons.moveRight.rotation) ?? 0;
+          const extraRotation = isVerticalLayout ? 90 : 0;
+          svg.style.transform = `rotate(${baseRotation + extraRotation}deg)`;
+        }
         moveRightBtn.title = isVerticalLayout ? 'Move down' : 'Move right';
       }
     }
