@@ -18,9 +18,6 @@
     "system.display",
     "storage"
   ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
   "background": {
     "type": "module",
     "service_worker": "src/background.js"
