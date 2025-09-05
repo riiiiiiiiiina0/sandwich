@@ -68,45 +68,24 @@ const updateActionTitle = async () => {
     });
     if (!activeTab || typeof activeTab.id !== 'number') return;
 
-    const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
     let title = 'Sandwich Bear';
 
-    if (
-      typeof activeTab.url === 'string' &&
-      activeTab.url.startsWith(splitBaseUrl)
-    ) {
-      // On split page: show Restore {N} tabs based on query param
-      try {
-        const urlObj = new URL(activeTab.url);
-        const urlsParam = urlObj.searchParams.get('urls');
-        const count = urlsParam
-          ? urlsParam
-              .split(',')
-              .map((s) => decodeURIComponent(s))
-              .filter((u) => u && u.length > 0).length
-          : 0;
-        title = `Restore ${count} tabs`;
-      } catch (_e) {
-        title = 'Restore tabs';
-      }
+    // Not on split page: show Open {N (2<=N<=4)} tabs in split view
+    const windowId = activeTab.windowId;
+    const highlightedTabs = await chrome.tabs.query({
+      highlighted: true,
+      windowId,
+    });
+    const httpTabs = highlightedTabs.filter(
+      (t) =>
+        typeof t.url === 'string' &&
+        (t.url.startsWith('http://') || t.url.startsWith('https://')),
+    );
+    if (httpTabs.length <= 1) {
+      title = 'Highlight multiple tabs to open in popup windows';
     } else {
-      // Not on split page: show Open {N (2<=N<=4)} tabs in split view
-      const windowId = activeTab.windowId;
-      const highlightedTabs = await chrome.tabs.query({
-        highlighted: true,
-        windowId,
-      });
-      const httpTabs = highlightedTabs.filter(
-        (t) =>
-          typeof t.url === 'string' &&
-          (t.url.startsWith('http://') || t.url.startsWith('https://')),
-      );
-      if (httpTabs.length <= 1) {
-        title = 'Highlight multiple tabs to open in split view';
-      } else {
-        const n = Math.max(2, Math.min(4, httpTabs.length));
-        title = `Open ${n} tabs in split view`;
-      }
+      const n = Math.max(2, Math.min(4, httpTabs.length));
+      title = `Open ${n} tabs in popup windows`;
     }
 
     await chrome.action.setTitle({ title, tabId: activeTab.id });
@@ -139,69 +118,9 @@ chrome.runtime.onStartup.addListener(() => {
   updateActionTitle();
 });
 
-// Handle action button click: open up to the first 4 highlighted tabs in split page
+// Handle action button click: open up to the first 4 highlighted tabs in popup windows
 chrome.action.onClicked.addListener(async (currentTab) => {
   try {
-    // If we're currently on the split page, unsplit: open all iframe URLs as tabs and close the split tab
-    const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
-    if (
-      typeof currentTab.url === 'string' &&
-      currentTab.url.startsWith(splitBaseUrl)
-    ) {
-      try {
-        const urlObj = new URL(currentTab.url);
-        const urlsParam = urlObj.searchParams.get('urls');
-        if (urlsParam) {
-          const urls = urlsParam
-            .split(',')
-            .map((s) => decodeURIComponent(s))
-            .filter((u) => typeof u === 'string' && u.length > 0);
-
-          const baseIndex = (currentTab.index ?? 0) + 1;
-          const newTabs = await Promise.all(
-            urls.map((u) =>
-              chrome.tabs.create({
-                url: u,
-                windowId: currentTab.windowId,
-              }),
-            ),
-          );
-
-          const newTabIds = newTabs
-            .map((tab) => tab.id)
-            .filter((id) => typeof id === 'number');
-
-          if (newTabIds.length > 0) {
-            // If the split page was in a group, move the new tabs into that group.
-            if (
-              typeof currentTab.groupId === 'number' &&
-              currentTab.groupId > -1
-            ) {
-              await chrome.tabs.group({
-                groupId: currentTab.groupId,
-                tabIds: /** @type {number[]} */ (newTabIds),
-              });
-            }
-            // Move the tabs to the desired position.
-            await chrome.tabs.move(/** @type {number[]} */ (newTabIds), {
-              index: baseIndex,
-            });
-          }
-        }
-      } catch (unsplitErr) {
-        console.error('Failed to unsplit tabs:', unsplitErr);
-      }
-
-      if (typeof currentTab.id === 'number') {
-        try {
-          await chrome.tabs.remove(currentTab.id);
-        } catch (removeErr) {
-          console.error('Failed to close split tab:', removeErr);
-        }
-      }
-      return;
-    }
-
     // Get highlighted tabs in the current window
     const highlightedTabs = await chrome.tabs.query({
       highlighted: true,
@@ -225,33 +144,35 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       return;
     }
 
-    const urlsParam = httpTabs
-      .map((t) => encodeURIComponent(String(t.url)))
-      .join(',');
-
-    const splitUrl = `${chrome.runtime.getURL(
-      'pages/split.html',
-    )}?urls=${urlsParam}`;
-
-    // Create the new split tab at the position of the first of the highlighted tabs,
-    // and in the same tab group if they are in one.
     const firstTab = httpTabs[0];
-    const newTab = await chrome.tabs.create({
-      url: splitUrl,
+
+    // Create a new empty tab before the first target tab
+    await chrome.tabs.create({
+      url: 'about:blank',
       windowId: currentTab.windowId,
+      index: firstTab.index,
     });
 
-    if (typeof newTab.id === 'number') {
-      // If the first tab is in a group, move the new split tab into the same group.
-      // This action moves the tab to the end of the group.
-      if (typeof firstTab.groupId === 'number' && firstTab.groupId > -1) {
-        await chrome.tabs.group({
-          groupId: firstTab.groupId,
-          tabIds: newTab.id,
-        });
-      }
-      // Finally, move the tab to the desired index.
-      await chrome.tabs.move(newTab.id, { index: firstTab.index });
+    // Get window details for positioning popups
+    const window = await chrome.windows.get(currentTab.windowId);
+    const windowWidth = window.width || 0;
+    const windowHeight = window.height || 0;
+    const windowTop = window.top || 0;
+    const windowLeft = window.left || 0;
+
+    const popupWidth = Math.floor(windowWidth / httpTabs.length);
+
+    // Create a popup window for each tab
+    for (let i = 0; i < httpTabs.length; i++) {
+      const tab = httpTabs[i];
+      await chrome.windows.create({
+        url: tab.url,
+        type: 'popup',
+        left: windowLeft + i * popupWidth,
+        top: windowTop,
+        width: popupWidth,
+        height: windowHeight,
+      });
     }
 
     // Close the used highlighted tabs
@@ -266,7 +187,7 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       console.error('Failed to close used highlighted tabs:', closeErr);
     }
   } catch (error) {
-    console.error('Failed to open split page from highlighted tabs:', error);
+    console.error('Failed to open popup windows from highlighted tabs:', error);
   }
 });
 
