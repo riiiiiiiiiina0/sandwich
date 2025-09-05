@@ -1,7 +1,7 @@
 // constants
 const INSET = 5;
-const GAP = 3;
-const ADDRESS_BAR_HEIGHT = 40;
+let GAP = 3;
+let ADDRESS_BAR_HEIGHT = 40;
 
 /**
  * Controller state associated with a newly created blank tab.
@@ -126,6 +126,29 @@ const ensureRestoredControllers = async () => {
   if (hasRestoredControllers) return;
   hasRestoredControllers = true;
   await restoreControllers();
+  try {
+    const os = await getPlatformOs();
+    if (os === 'win') {
+      ADDRESS_BAR_HEIGHT = 50;
+      GAP = 0;
+    }
+  } catch (_e) {}
+};
+
+/**
+ * Get and cache the platform OS (e.g., 'win', 'mac', 'linux').
+ * @returns {Promise<string>}
+ */
+let cachedPlatformOs = null;
+const getPlatformOs = async () => {
+  if (cachedPlatformOs) return cachedPlatformOs;
+  try {
+    const info = await chrome.runtime.getPlatformInfo();
+    cachedPlatformOs = info?.os || 'unknown';
+  } catch (_e) {
+    cachedPlatformOs = 'unknown';
+  }
+  return cachedPlatformOs;
 };
 
 /**
@@ -142,8 +165,28 @@ const focusFirstPopupWindow = async (controllerTabId) => {
     )
       return;
     const firstPopupId = ctl.popupWindowIds[0];
-    if (typeof firstPopupId === 'number') {
-      await chrome.windows.update(firstPopupId, { focused: true });
+
+    // On Windows, focusing only one popup can leave others behind the parent.
+    // Workaround: briefly focus each popup to lift them above the parent,
+    // then refocus the first popup for consistent UX.
+    const os = await getPlatformOs();
+    if (os === 'win') {
+      for (const winId of ctl.popupWindowIds) {
+        if (typeof winId === 'number') {
+          try {
+            await chrome.windows.update(winId, { focused: true });
+          } catch (_e) {
+            // ignore per-window failures
+          }
+        }
+      }
+      if (typeof firstPopupId === 'number') {
+        await chrome.windows.update(firstPopupId, { focused: true });
+      }
+    } else {
+      if (typeof firstPopupId === 'number') {
+        await chrome.windows.update(firstPopupId, { focused: true });
+      }
     }
   } catch (_e) {
     // ignore
