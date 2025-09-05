@@ -17,6 +17,18 @@ const controllerByTabId = new Map();
 const popupWindowIdToControllerTabId = new Map();
 
 /**
+ * Track window ids we are updating programmatically to avoid re-entrant tiling.
+ * @type {Set<number>}
+ */
+const programmaticUpdateWindowIds = new Set();
+
+/**
+ * Debounce timers per controller to avoid excessive re-tiles while dragging.
+ * @type {Map<number, number>}
+ */
+const retileTimeoutByController = new Map();
+
+/**
  * Hide all popup windows for a given controller tab id (minimize them).
  * @param {number} controllerTabId
  */
@@ -516,6 +528,11 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
   try {
     const windowId = (typeof winOrId === 'number' ? winOrId : winOrId.id) || -1;
+
+    // Ignore bounds events caused by our own updates
+    if (programmaticUpdateWindowIds.has(windowId)) {
+      return;
+    }
     const affectedControllers = [...controllerByTabId.entries()].filter(
       ([, ctl]) => ctl.parentWindowId === windowId,
     );
@@ -531,11 +548,41 @@ chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
         if (changedWin?.state === 'maximized') {
           const ctl = controllerByTabId.get(controllerFromPopup);
           if (ctl && typeof ctl.parentWindowId === 'number') {
-            await chrome.windows.update(ctl.parentWindowId, {
-              state: 'maximized',
-            });
+            programmaticUpdateWindowIds.add(ctl.parentWindowId);
+            try {
+              await chrome.windows.update(ctl.parentWindowId, {
+                state: 'maximized',
+              });
+            } finally {
+              // allow a short delay to swallow immediate bounce events
+              setTimeout(
+                () => programmaticUpdateWindowIds.delete(ctl.parentWindowId),
+                100,
+              );
+            }
             await tileControllerPopups(controllerFromPopup);
           }
+        }
+      } catch (_e) {
+        // ignore
+      }
+    }
+
+    // If a popup window is moved manually (state normal), re-tile to restore layout
+    if (typeof controllerFromPopup === 'number') {
+      try {
+        const win = await chrome.windows.get(windowId);
+        if (win?.state === 'normal') {
+          const existing = retileTimeoutByController.get(controllerFromPopup);
+          if (existing) {
+            clearTimeout(existing);
+          }
+          const timeoutId = setTimeout(() => {
+            retileTimeoutByController.delete(controllerFromPopup);
+            tileControllerPopups(controllerFromPopup);
+          }, 120);
+          // @ts-ignore - timeout id type differs across runtimes
+          retileTimeoutByController.set(controllerFromPopup, timeoutId);
         }
       } catch (_e) {
         // ignore
