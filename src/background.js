@@ -175,6 +175,23 @@ const hideControllerPopups = async (controllerTabId) => {
 };
 
 /**
+ * Minimize all popup windows for a given controller tab id.
+ * @param {number} controllerTabId
+ */
+const minimizeControllerPopups = async (controllerTabId) => {
+  const controller = controllerByTabId.get(controllerTabId);
+  if (!controller) return;
+
+  for (const winId of controller.popupWindowIds) {
+    try {
+      await chrome.windows.update(winId, { state: 'minimized' });
+    } catch (_e) {
+      // window may already be closed/minimized
+    }
+  }
+};
+
+/**
  * Compute and apply tiling for popup windows alongside their parent window bounds.
  * This also restores them to normal (visible) state.
  * @param {number} controllerTabId
@@ -981,6 +998,23 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
   try {
     await ensureRestoredControllers();
     if (windowId === chrome.windows.WINDOW_ID_NONE) {
+      // If focus is lost, check if the last focused window was a parent that is now minimized
+      if (lastFocusedWindowId) {
+        try {
+          const lastWin = await chrome.windows.get(lastFocusedWindowId);
+          if (lastWin.state === 'minimized') {
+            const affected = [...controllerByTabId.entries()].filter(
+              ([_, ctl]) => ctl.parentWindowId === lastFocusedWindowId,
+            );
+            for (const [tabId] of affected) {
+              await minimizeControllerPopups(tabId);
+            }
+          }
+        } catch (_e) {
+          // window may be gone
+        }
+      }
+
       // Hide all if focus lost
       await Promise.all(
         [...controllerByTabId.keys()].map((id) => hideControllerPopups(id)),
