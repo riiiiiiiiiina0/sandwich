@@ -23,6 +23,12 @@ const popupWindowIdToControllerTabId = new Map();
 const programmaticUpdateWindowIds = new Set();
 
 /**
+ * Track the last focused window to detect focus transitions.
+ * @type {number | null}
+ */
+let lastFocusedWindowId = null;
+
+/**
  * Debounce timers per controller to avoid excessive re-tiles while dragging.
  * @type {Map<number, number>}
  */
@@ -540,6 +546,48 @@ const postControllerMeta = async (controllerTabId, metaOrNull) => {
 };
 
 /**
+ * Check if a controller tab is currently the active tab in its window.
+ * @param {number} controllerTabId
+ * @returns {Promise<boolean>}
+ */
+const isControllerTabActive = async (controllerTabId) => {
+  try {
+    const controller = controllerByTabId.get(controllerTabId);
+    if (!controller) return false;
+
+    const [activeTab] = await chrome.tabs.query({
+      active: true,
+      windowId: controller.parentWindowId,
+    });
+
+    return activeTab?.id === controllerTabId;
+  } catch (_e) {
+    return false;
+  }
+};
+
+/**
+ * Check if a window ID is related to any controller (either as parent or popup).
+ * @param {number} windowId
+ * @returns {boolean}
+ */
+const isWindowRelatedToController = (windowId) => {
+  // Check if it's a popup window
+  if (popupWindowIdToControllerTabId.has(windowId)) {
+    return true;
+  }
+
+  // Check if it's a parent window
+  for (const controller of controllerByTabId.values()) {
+    if (controller.parentWindowId === windowId) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
+/**
  * Refresh stored controller info (index, groupId, window) from the actual tab.
  * @param {number} controllerTabId
  */
@@ -638,12 +686,24 @@ chrome.windows.onFocusChanged.addListener(() => {
   updateActionTitle();
 });
 
-// Initialize title on install/startup
-chrome.runtime.onInstalled.addListener(() => {
+// Initialize title and focus tracking on install/startup
+chrome.runtime.onInstalled.addListener(async () => {
   updateActionTitle();
+  try {
+    const currentWindow = await chrome.windows.getCurrent();
+    lastFocusedWindowId = currentWindow?.id || null;
+  } catch (_e) {
+    lastFocusedWindowId = null;
+  }
 });
-chrome.runtime.onStartup.addListener(() => {
+chrome.runtime.onStartup.addListener(async () => {
   updateActionTitle();
+  try {
+    const currentWindow = await chrome.windows.getCurrent();
+    lastFocusedWindowId = currentWindow?.id || null;
+  } catch (_e) {
+    lastFocusedWindowId = null;
+  }
 });
 
 // Handle action button click: open up to the first 4 highlighted tabs in popup windows
@@ -825,8 +885,14 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
       await Promise.all(
         [...controllerByTabId.keys()].map((id) => hideControllerPopups(id)),
       );
+      lastFocusedWindowId = null;
       return;
     }
+
+    // Check if the previous focus was on a controller-related window
+    const wasPreviousFocusOnController =
+      lastFocusedWindowId !== null &&
+      isWindowRelatedToController(lastFocusedWindowId);
 
     const [activeTab] = await chrome.tabs.query({ active: true, windowId });
     if (activeTab?.id != null && controllerByTabId.has(activeTab.id)) {
@@ -855,6 +921,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
           }
         }
       } catch (_e) {}
+      lastFocusedWindowId = windowId;
       return;
     }
 
@@ -873,9 +940,33 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
               }
             : null,
         );
+
+        // NEW BEHAVIOR: If neither parent nor popup windows had focus before,
+        // focus the parent window and activate the split page tab
+        if (!wasPreviousFocusOnController) {
+          const controller = controllerByTabId.get(controllerFromPopup);
+          if (controller) {
+            try {
+              // Focus the parent window
+              await chrome.windows.update(controller.parentWindowId, {
+                focused: true,
+              });
+              // Activate the controller (split page) tab
+              await chrome.tabs.update(controllerFromPopup, { active: true });
+              // Show the controller's popups
+              await showOnlyActiveController(controllerFromPopup);
+            } catch (e) {
+              console.error(
+                'Failed to focus parent window and activate split tab:',
+                e,
+              );
+            }
+          }
+        }
       } catch (e) {
         console.error('Failed to update controller tab meta:', e);
       }
+      lastFocusedWindowId = windowId;
       return;
     }
 
@@ -896,6 +987,8 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
         }
       }),
     );
+
+    lastFocusedWindowId = windowId;
   } catch (_e) {
     // ignore
   }
@@ -913,8 +1006,14 @@ chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
     const affectedControllers = [...controllerByTabId.entries()].filter(
       ([, ctl]) => ctl.parentWindowId === windowId,
     );
+    // Only bring popups to front if the controller tab is currently active
     await Promise.all(
-      affectedControllers.map(([tabId]) => applyProportionalLayout(tabId)),
+      affectedControllers.map(async ([tabId]) => {
+        const isActive = await isControllerTabActive(tabId);
+        if (isActive) {
+          await applyProportionalLayout(tabId);
+        }
+      }),
     );
 
     // If a popup window was maximized, maximize the parent window and re-tile
