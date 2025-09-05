@@ -164,6 +164,11 @@ const focusFirstPopupWindow = async (controllerTabId) => {
       ctl.popupWindowIds.length === 0
     )
       return;
+    // If the parent window is minimized, do not alter popup focus/state
+    try {
+      const parentWin = await chrome.windows.get(ctl.parentWindowId);
+      if (parentWin?.state === 'minimized') return;
+    } catch (_e) {}
     const firstPopupId = ctl.popupWindowIds[0];
 
     // On Windows, focusing only one popup can leave others behind the parent.
@@ -204,17 +209,7 @@ const retileTimeoutByController = new Map();
  * @param {number} controllerTabId
  */
 const hideControllerPopups = async (controllerTabId) => {
-  const controller = controllerByTabId.get(controllerTabId);
-  if (!controller) return;
-
-  // UPDATE: do nothing, just let the main window cover on top of the popups
-  // for (const winId of controller.popupWindowIds) {
-  //   try {
-  //     await chrome.windows.update(winId, { state: 'minimized' });
-  //   } catch (_e) {
-  //     // window may already be closed/minimized
-  //   }
-  // }
+  // DO NOTHING, just let the parent window cover on top of the popup windows
 };
 
 /**
@@ -542,6 +537,17 @@ const applyProportionalLayout = async (controllerTabId) => {
     await refreshControllerFromTab(controllerTabId);
 
     const parentWindow = await chrome.windows.get(controller.parentWindowId);
+    // If the parent window is minimized, ensure popups stay minimized and skip layout
+    if (parentWindow?.state === 'minimized') {
+      await Promise.all(
+        controller.popupWindowIds.map(async (winId) => {
+          try {
+            await chrome.windows.update(winId, { state: 'minimized' });
+          } catch (_e) {}
+        }),
+      );
+      return;
+    }
     const windowWidth = parentWindow.width || 0;
     const windowHeight = parentWindow.height || 0;
     const windowTop = parentWindow.top || 0;
@@ -633,6 +639,17 @@ const showOnlyActiveController = async (activeControllerTabId) => {
   await Promise.all(
     allControllers.map(async (tabId) => {
       if (tabId === activeControllerTabId) {
+        // If the parent window is minimized, keep popups minimized
+        try {
+          const ctl = controllerByTabId.get(tabId);
+          if (ctl) {
+            const parent = await chrome.windows.get(ctl.parentWindowId);
+            if (parent?.state === 'minimized') {
+              await minimizeControllerPopups(tabId);
+              return;
+            }
+          }
+        } catch (_e) {}
         await applyProportionalLayout(tabId);
       } else {
         await hideControllerPopups(tabId);
@@ -1040,31 +1057,6 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
   try {
     await ensureRestoredControllers();
-    if (windowId === chrome.windows.WINDOW_ID_NONE) {
-      // If focus is lost, check if the last focused window was a parent that is now minimized
-      if (lastFocusedWindowId) {
-        try {
-          const lastWin = await chrome.windows.get(lastFocusedWindowId);
-          if (lastWin.state === 'minimized') {
-            const affected = [...controllerByTabId.entries()].filter(
-              ([_, ctl]) => ctl.parentWindowId === lastFocusedWindowId,
-            );
-            for (const [tabId] of affected) {
-              await minimizeControllerPopups(tabId);
-            }
-          }
-        } catch (_e) {
-          // window may be gone
-        }
-      }
-
-      // Hide all if focus lost
-      await Promise.all(
-        [...controllerByTabId.keys()].map((id) => hideControllerPopups(id)),
-      );
-      lastFocusedWindowId = null;
-      return;
-    }
 
     // Check if the previous focus was on a controller-related window
     const wasPreviousFocusOnController =
@@ -1072,6 +1064,26 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
       isWindowRelatedToController(lastFocusedWindowId);
 
     const [activeTab] = await chrome.tabs.query({ active: true, windowId });
+    // If the focused window is minimized or not valid, avoid restoring popups
+    try {
+      if (typeof windowId === 'number') {
+        const focusedWin = await chrome.windows.get(windowId);
+        if (focusedWin?.state === 'minimized') {
+          // Minimize any controllers whose parent is this window and bail
+          await Promise.all(
+            [...controllerByTabId.entries()].map(
+              async ([controllerTabId, ctl]) => {
+                if (ctl.parentWindowId === windowId) {
+                  await minimizeControllerPopups(controllerTabId);
+                }
+              },
+            ),
+          );
+          lastFocusedWindowId = windowId;
+          return;
+        }
+      }
+    } catch (_e) {}
     if (activeTab?.id != null && controllerByTabId.has(activeTab.id)) {
       await refreshControllerFromTab(activeTab.id);
       await showOnlyActiveController(activeTab.id);
@@ -1125,6 +1137,17 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
           const controller = controllerByTabId.get(controllerFromPopup);
           if (controller) {
             try {
+              // If the parent is minimized, keep everything minimized and bail
+              try {
+                const parentState = await chrome.windows.get(
+                  controller.parentWindowId,
+                );
+                if (parentState?.state === 'minimized') {
+                  await minimizeControllerPopups(controllerFromPopup);
+                  lastFocusedWindowId = windowId;
+                  return;
+                }
+              } catch (_e) {}
               // Focus the parent window
               await chrome.windows.update(controller.parentWindowId, {
                 focused: true,
@@ -1173,10 +1196,11 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 });
 
 // When the parent window moves or resizes, retile its popups
-chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
+chrome.windows.onBoundsChanged.addListener(async (win) => {
   try {
     await ensureRestoredControllers();
-    const windowId = (typeof winOrId === 'number' ? winOrId : winOrId.id) || -1;
+    const windowId = win.id;
+    if (!windowId) return;
 
     // Ignore bounds events caused by our own updates
     if (programmaticUpdateWindowIds.has(windowId)) {
@@ -1185,6 +1209,16 @@ chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
     const affectedControllers = [...controllerByTabId.entries()].filter(
       ([, ctl]) => ctl.parentWindowId === windowId,
     );
+
+    // If the parent window is minimized, minimize all associated popups
+    if (win.state === 'minimized' && affectedControllers.length > 0) {
+      await Promise.all(
+        affectedControllers.map(async ([tabId]) =>
+          minimizeControllerPopups(tabId),
+        ),
+      );
+      return;
+    }
     // Only bring popups to front if the controller tab is currently active
     await Promise.all(
       affectedControllers.map(async ([tabId]) => {
