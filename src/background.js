@@ -76,15 +76,10 @@ const updateActionTitle = async () => {
       highlighted: true,
       windowId,
     });
-    const httpTabs = highlightedTabs.filter(
-      (t) =>
-        typeof t.url === 'string' &&
-        (t.url.startsWith('http://') || t.url.startsWith('https://')),
-    );
-    if (httpTabs.length <= 1) {
+    if (highlightedTabs.length <= 1) {
       title = 'Highlight multiple tabs to open in popup windows';
     } else {
-      const n = Math.max(2, Math.min(4, httpTabs.length));
+      const n = Math.max(2, Math.min(4, highlightedTabs.length));
       title = `Open ${n} tabs in popup windows`;
     }
 
@@ -127,24 +122,19 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       currentWindow: true,
     });
 
-    // Filter to http/https tabs, sort by tab index (left-to-right), take first 4
-    const httpTabs = highlightedTabs
-      .filter(
-        (t) =>
-          typeof t.url === 'string' &&
-          (t.url.startsWith('http://') || t.url.startsWith('https://')),
-      )
+    // Sort by tab index (left-to-right), take first 4
+    const targetTabs = highlightedTabs
       .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
       .slice(0, 4);
 
-    if (httpTabs.length < 2) {
+    if (targetTabs.length < 2) {
       console.log(
-        'Highlighted tabs did not include at least two HTTP(S) pages; doing nothing.',
+        'Highlighted tabs did not include at least two pages; doing nothing.',
       );
       return;
     }
 
-    const firstTab = httpTabs[0];
+    const firstTab = targetTabs[0];
 
     // Create a new empty tab before the first target tab
     await chrome.tabs.create({
@@ -160,11 +150,11 @@ chrome.action.onClicked.addListener(async (currentTab) => {
     const windowTop = window.top || 0;
     const windowLeft = window.left || 0;
 
-    const popupWidth = Math.floor(windowWidth / httpTabs.length);
+    const popupWidth = Math.floor(windowWidth / targetTabs.length);
 
     // Create a popup window for each tab
-    for (let i = 0; i < httpTabs.length; i++) {
-      const tab = httpTabs[i];
+    for (let i = 0; i < targetTabs.length; i++) {
+      const tab = targetTabs[i];
       await chrome.windows.create({
         url: tab.url,
         type: 'popup',
@@ -177,7 +167,7 @@ chrome.action.onClicked.addListener(async (currentTab) => {
 
     // Close the used highlighted tabs
     try {
-      const tabIdsToClose = httpTabs
+      const tabIdsToClose = targetTabs
         .map((t) => t.id)
         .filter((id) => typeof id === 'number');
       if (tabIdsToClose.length > 0) {
