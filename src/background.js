@@ -82,13 +82,18 @@ const tileControllerPopups = async (controllerTabId) => {
           const columnWidth = isLast
             ? availableWidthNoGaps - baseColumnWidth * i
             : baseColumnWidth;
-          await chrome.windows.update(winId, {
-            state: 'normal',
-            left: columnLeft,
-            top: windowTop + ADDRESS_BAR_HEIGHT,
-            width: Math.max(50, columnWidth),
-            height: Math.max(100, availableHeight),
-          });
+          programmaticUpdateWindowIds.add(winId);
+          try {
+            await chrome.windows.update(winId, {
+              state: 'normal',
+              left: columnLeft,
+              top: windowTop + ADDRESS_BAR_HEIGHT,
+              width: Math.max(50, columnWidth),
+              height: Math.max(100, availableHeight),
+            });
+          } finally {
+            setTimeout(() => programmaticUpdateWindowIds.delete(winId), 100);
+          }
         } catch (_e) {
           // ignore if window was removed or cannot be updated
         }
@@ -685,5 +690,65 @@ chrome.windows.onRemoved.addListener((windowId) => {
   if (controller.popupWindowIds.length === 0) {
     chrome.tabs.remove(controllerTabId).catch(() => {});
     cleanupController(controllerTabId);
+  } else if (controller.popupWindowIds.length === 1) {
+    // Restore the last remaining popup to a normal tab and clean up
+    (async () => {
+      try {
+        const lastWinId = controller.popupWindowIds[0];
+        let activeTabId = undefined;
+        try {
+          const lastWin = await chrome.windows.get(lastWinId, {
+            populate: true,
+          });
+          const activeTab =
+            lastWin.tabs?.find((t) => t.active) || lastWin.tabs?.[0];
+          if (typeof activeTab?.id === 'number') activeTabId = activeTab.id;
+        } catch (_e) {}
+
+        if (typeof activeTabId === 'number') {
+          // Move the tab back to parent window at the controller's index
+          try {
+            await chrome.tabs.move(activeTabId, {
+              windowId: controller.parentWindowId,
+              index: controller.controllerTabIndex || 0,
+            });
+            // If controller had a group, re-group the moved tab and reposition
+            if (
+              typeof controller.controllerTabGroupId === 'number' &&
+              controller.controllerTabGroupId >= 0
+            ) {
+              try {
+                await chrome.tabs.group({
+                  tabIds: activeTabId,
+                  groupId: controller.controllerTabGroupId,
+                });
+                await chrome.tabs.move(activeTabId, {
+                  windowId: controller.parentWindowId,
+                  index: controller.controllerTabIndex || 0,
+                });
+              } catch (_e) {}
+            }
+          } catch (_e) {}
+        }
+
+        // Remove mapping for the last popup and close it
+        popupWindowIdToControllerTabId.delete(lastWinId);
+        controller.popupWindowIds = [];
+        try {
+          await chrome.windows.remove(lastWinId);
+        } catch (_e) {}
+
+        // Finally, close the controller tab and cleanup
+        try {
+          await chrome.tabs.remove(controllerTabId);
+        } catch (_e) {}
+        cleanupController(controllerTabId);
+      } catch (_e) {
+        // ignore
+      }
+    })();
+  } else {
+    // Re-tile remaining popups to fill gaps
+    tileControllerPopups(controllerTabId).catch(() => {});
   }
 });
