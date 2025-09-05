@@ -1063,6 +1063,27 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
       lastFocusedWindowId !== null &&
       isWindowRelatedToController(lastFocusedWindowId);
 
+    // On macOS, when Chrome loses focus (user switches to another app),
+    // the focused window id becomes WINDOW_ID_NONE. Ensure any popups
+    // associated with the previously focused parent window are minimized
+    // so they don't remain focused/on-top while Chrome is inactive.
+    try {
+      const os = await getPlatformOs();
+      if (os === 'mac' && windowId === chrome.windows.WINDOW_ID_NONE) {
+        await Promise.all(
+          [...controllerByTabId.entries()].map(
+            async ([controllerTabId, ctl]) => {
+              if (ctl.parentWindowId === lastFocusedWindowId) {
+                await minimizeControllerPopups(controllerTabId);
+              }
+            },
+          ),
+        );
+        lastFocusedWindowId = windowId;
+        return;
+      }
+    } catch (_e) {}
+
     const [activeTab] = await chrome.tabs.query({ active: true, windowId });
     // If the focused window is minimized or not valid, avoid restoring popups
     try {
