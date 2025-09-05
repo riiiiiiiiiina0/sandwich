@@ -6,7 +6,7 @@ const ADDRESS_BAR_HEIGHT = 40;
 /**
  * Controller state associated with a newly created blank tab.
  * Keys are controller blank tab ids; values store popup windows and parent window.
- * @type {Map<number, { parentWindowId: number, popupWindowIds: number[], controllerTabIndex: number, controllerTabGroupId: number }>}
+ * @type {Map<number, { parentWindowId: number, popupWindowIds: number[], controllerTabIndex: number, controllerTabGroupId: number, widthRatios: Record<number, number> }>}
  */
 const controllerByTabId = new Map();
 
@@ -105,6 +105,368 @@ const tileControllerPopups = async (controllerTabId) => {
 };
 
 /**
+ * Reflow sibling popups after one popup is resized/moved by the user.
+ * Rules:
+ * - If the resized popup exceeds the parent window's rect, expand the parent to contain it
+ * - Popups to the left share the left side equally
+ * - Popups to the right share the right side equally
+ * - All popups' heights match the parent's available height
+ * @param {number} controllerTabId
+ * @param {number} resizedPopupWindowId
+ */
+const reflowAfterPopupResize = async (
+  controllerTabId,
+  resizedPopupWindowId,
+) => {
+  const controller = controllerByTabId.get(controllerTabId);
+  if (!controller) return;
+  try {
+    await refreshControllerFromTab(controllerTabId);
+
+    // Resolve current parent bounds
+    const parentWindow = await chrome.windows.get(controller.parentWindowId);
+    if (!parentWindow) return;
+    let parentLeft = parentWindow.left || 0;
+    let parentTop = parentWindow.top || 0;
+    let parentWidth = parentWindow.width || 0;
+    let parentHeight = parentWindow.height || 0;
+
+    // Get all popup bounds
+    /** @type {{id:number,left:number,top:number,width:number,height:number}[]} */
+    const popups = [];
+    for (const winId of controller.popupWindowIds) {
+      try {
+        const w = await chrome.windows.get(winId);
+        if (!w) continue;
+        popups.push({
+          id: winId,
+          left: w.left || 0,
+          top: w.top || 0,
+          width: w.width || 0,
+          height: w.height || 0,
+        });
+      } catch (_e) {}
+    }
+    if (popups.length === 0) return;
+
+    // Identify resized popup info
+    const resized = popups.find((p) => p.id === resizedPopupWindowId);
+    if (!resized) return;
+
+    // Ensure parent contains resized popup horizontally (with INSET)
+    const parentRight = parentLeft + parentWidth;
+    const resizedRight = resized.left + resized.width;
+    let newParentLeft = parentLeft;
+    let newParentRight = parentRight;
+    if (resized.left < parentLeft + INSET) {
+      newParentLeft = Math.min(parentLeft, resized.left - INSET);
+    }
+    if (resizedRight > parentRight - INSET) {
+      newParentRight = Math.max(parentRight, resizedRight + INSET);
+    }
+
+    // Ensure parent height can accommodate desired popup height
+    const desiredAvailableHeight = Math.max(100, resized.height);
+    const requiredParentHeight =
+      ADDRESS_BAR_HEIGHT + INSET + desiredAvailableHeight;
+    let newParentTop = parentTop;
+    let newParentHeight = Math.max(parentHeight, requiredParentHeight);
+
+    // Apply parent expansion if needed
+    if (
+      newParentLeft !== parentLeft ||
+      newParentRight !== parentRight ||
+      newParentHeight !== parentHeight
+    ) {
+      const updatedLeft = newParentLeft;
+      const updatedWidth = Math.max(50, newParentRight - newParentLeft);
+      programmaticUpdateWindowIds.add(controller.parentWindowId);
+      try {
+        await chrome.windows.update(controller.parentWindowId, {
+          state: 'normal',
+          left: updatedLeft,
+          top: newParentTop,
+          width: updatedWidth,
+          height: newParentHeight,
+        });
+      } finally {
+        setTimeout(
+          () => programmaticUpdateWindowIds.delete(controller.parentWindowId),
+          100,
+        );
+      }
+      // Refresh parent bounds after update
+      try {
+        const pw = await chrome.windows.get(controller.parentWindowId);
+        parentLeft = pw.left || parentLeft;
+        parentTop = pw.top || parentTop;
+        parentWidth = pw.width || parentWidth;
+        parentHeight = pw.height || parentHeight;
+      } catch (_e) {}
+    }
+
+    // Compute layout regions
+    const availableHeight = Math.max(
+      100,
+      parentHeight - ADDRESS_BAR_HEIGHT - INSET,
+    );
+    const topForPopups = parentTop + ADDRESS_BAR_HEIGHT;
+
+    // Sort by left for deterministic ordering
+    popups.sort((a, b) => a.left - b.left);
+    const idx = popups.findIndex((p) => p.id === resizedPopupWindowId);
+    if (idx < 0) return;
+    const leftGroup = popups.slice(0, idx);
+    const rightGroup = popups.slice(idx + 1);
+
+    // Constrain resized popup to be within new parent horizontally
+    const parentInnerLeft = parentLeft + INSET;
+    const parentInnerRight = parentLeft + parentWidth - INSET;
+    let resizedLeftClamped = Math.max(
+      parentInnerLeft,
+      Math.min(resized.left, parentInnerRight - 50),
+    );
+    let resizedWidthClamped = Math.max(
+      50,
+      Math.min(resized.width, parentInnerRight - resizedLeftClamped),
+    );
+
+    // Left region: from inner-left to (resizedLeftClamped - GAP)
+    const leftRegionStart = parentInnerLeft;
+    const leftRegionEnd = Math.max(
+      leftRegionStart,
+      resizedLeftClamped - (leftGroup.length > 0 ? GAP : 0),
+    );
+    const leftRegionWidth = Math.max(0, leftRegionEnd - leftRegionStart);
+    const leftGaps = Math.max(0, (leftGroup.length - 1) * GAP);
+    const leftWidthNoGaps = Math.max(0, leftRegionWidth - leftGaps);
+    const leftBaseWidth =
+      leftGroup.length > 0 ? Math.floor(leftWidthNoGaps / leftGroup.length) : 0;
+
+    // Right region: from (resizedRight + GAP) to inner-right
+    const resizedRightClamped = resizedLeftClamped + resizedWidthClamped;
+    const rightRegionStart = Math.min(
+      parentInnerRight,
+      resizedRightClamped + (rightGroup.length > 0 ? GAP : 0),
+    );
+    const rightRegionEnd = parentInnerRight;
+    const rightRegionWidth = Math.max(0, rightRegionEnd - rightRegionStart);
+    const rightGaps = Math.max(0, (rightGroup.length - 1) * GAP);
+    const rightWidthNoGaps = Math.max(0, rightRegionWidth - rightGaps);
+    const rightBaseWidth =
+      rightGroup.length > 0
+        ? Math.floor(rightWidthNoGaps / rightGroup.length)
+        : 0;
+
+    // Issue updates: left group
+    let cursor = leftRegionStart;
+    for (let i = 0; i < leftGroup.length; i++) {
+      const isLast = i === leftGroup.length - 1;
+      const width =
+        leftGroup.length > 0
+          ? isLast
+            ? Math.max(0, leftWidthNoGaps - leftBaseWidth * i)
+            : leftBaseWidth
+          : 0;
+      const target = leftGroup[i];
+      programmaticUpdateWindowIds.add(target.id);
+      try {
+        await chrome.windows.update(target.id, {
+          state: 'normal',
+          left: cursor,
+          top: topForPopups,
+          width: Math.max(50, width),
+          height: availableHeight,
+        });
+      } catch (_e) {
+      } finally {
+        setTimeout(() => programmaticUpdateWindowIds.delete(target.id), 100);
+      }
+      cursor += Math.max(50, width) + GAP;
+    }
+
+    // Update the resized popup itself (normalize top/height, keep its width)
+    programmaticUpdateWindowIds.add(resizedPopupWindowId);
+    try {
+      await chrome.windows.update(resizedPopupWindowId, {
+        state: 'normal',
+        left: resizedLeftClamped,
+        top: topForPopups,
+        width: Math.max(50, resizedWidthClamped),
+        height: availableHeight,
+      });
+    } catch (_e) {
+    } finally {
+      setTimeout(
+        () => programmaticUpdateWindowIds.delete(resizedPopupWindowId),
+        100,
+      );
+    }
+
+    // Issue updates: right group
+    cursor = rightRegionStart;
+    for (let i = 0; i < rightGroup.length; i++) {
+      const isLast = i === rightGroup.length - 1;
+      const width =
+        rightGroup.length > 0
+          ? isLast
+            ? Math.max(0, rightWidthNoGaps - rightBaseWidth * i)
+            : rightBaseWidth
+          : 0;
+      const target = rightGroup[i];
+      programmaticUpdateWindowIds.add(target.id);
+      try {
+        await chrome.windows.update(target.id, {
+          state: 'normal',
+          left: cursor,
+          top: topForPopups,
+          width: Math.max(50, width),
+          height: availableHeight,
+        });
+      } catch (_e) {
+      } finally {
+        setTimeout(() => programmaticUpdateWindowIds.delete(target.id), 100);
+      }
+      cursor += Math.max(50, width) + GAP;
+    }
+
+    // Update width ratios based on new layout
+    try {
+      const totalWidth =
+        leftWidthNoGaps + resizedWidthClamped + rightWidthNoGaps;
+      if (totalWidth > 0) {
+        // Update ratios for left group
+        for (let i = 0; i < leftGroup.length; i++) {
+          const isLast = i === leftGroup.length - 1;
+          const width =
+            leftGroup.length > 0
+              ? isLast
+                ? Math.max(0, leftWidthNoGaps - leftBaseWidth * i)
+                : leftBaseWidth
+              : 0;
+          controller.widthRatios[leftGroup[i].id] =
+            Math.max(0, width) / totalWidth;
+        }
+
+        // Update ratio for resized popup
+        controller.widthRatios[resizedPopupWindowId] =
+          Math.max(0, resizedWidthClamped) / totalWidth;
+
+        // Update ratios for right group
+        for (let i = 0; i < rightGroup.length; i++) {
+          const isLast = i === rightGroup.length - 1;
+          const width =
+            rightGroup.length > 0
+              ? isLast
+                ? Math.max(0, rightWidthNoGaps - rightBaseWidth * i)
+                : rightBaseWidth
+              : 0;
+          controller.widthRatios[rightGroup[i].id] =
+            Math.max(0, width) / totalWidth;
+        }
+      }
+    } catch (_e) {
+      // ignore ratio update errors
+    }
+  } catch (_e) {
+    // ignore
+  }
+};
+
+/**
+ * Apply proportional layout based on stored width ratios.
+ * @param {number} controllerTabId
+ */
+const applyProportionalLayout = async (controllerTabId) => {
+  const controller = controllerByTabId.get(controllerTabId);
+  if (!controller) return;
+  try {
+    await refreshControllerFromTab(controllerTabId);
+
+    const parentWindow = await chrome.windows.get(controller.parentWindowId);
+    const windowWidth = parentWindow.width || 0;
+    const windowHeight = parentWindow.height || 0;
+    const windowTop = parentWindow.top || 0;
+    const windowLeft = parentWindow.left || 0;
+
+    const count = Math.max(1, controller.popupWindowIds.length);
+    const availableWidth = Math.max(0, windowWidth - INSET - INSET);
+    const availableHeight = Math.max(
+      0,
+      windowHeight - ADDRESS_BAR_HEIGHT - INSET,
+    );
+    const totalGaps = Math.max(0, (count - 1) * GAP);
+    const availableWidthNoGaps = Math.max(0, availableWidth - totalGaps);
+
+    // Get ratios for each popup, defaulting to equal distribution
+    const defaultRatio = count > 0 ? 1 / count : 1;
+    const ratios = controller.popupWindowIds.map((winId) => {
+      const ratio = controller.widthRatios[winId];
+      return typeof ratio === 'number' && isFinite(ratio) && ratio > 0
+        ? ratio
+        : defaultRatio;
+    });
+
+    // Normalize ratios to sum to 1
+    const ratioSum = ratios.reduce((sum, ratio) => sum + ratio, 0) || 1;
+    const normalizedRatios = ratios.map((ratio) => ratio / ratioSum);
+
+    // Calculate widths based on ratios
+    const widths = normalizedRatios.map((ratio) =>
+      Math.max(50, Math.floor(availableWidthNoGaps * ratio)),
+    );
+
+    // Distribute any remaining width to the last popup
+    const usedWidth = widths
+      .slice(0, -1)
+      .reduce((sum, width) => sum + width, 0);
+    if (widths.length > 0) {
+      widths[widths.length - 1] = Math.max(
+        50,
+        availableWidthNoGaps - usedWidth,
+      );
+    }
+
+    // Calculate positions for each popup
+    const positions = [];
+    let cursor = windowLeft + INSET;
+    for (let i = 0; i < controller.popupWindowIds.length; i++) {
+      const width = widths[i];
+      positions.push({
+        winId: controller.popupWindowIds[i],
+        left: cursor,
+        width: width,
+      });
+      cursor += width + GAP;
+    }
+
+    // Apply the layout
+    await Promise.all(
+      positions.map(async ({ winId, left, width }) => {
+        try {
+          programmaticUpdateWindowIds.add(winId);
+          try {
+            await chrome.windows.update(winId, {
+              state: 'normal',
+              left: left,
+              top: windowTop + ADDRESS_BAR_HEIGHT,
+              width: width,
+              height: Math.max(100, availableHeight),
+            });
+          } finally {
+            setTimeout(() => programmaticUpdateWindowIds.delete(winId), 100);
+          }
+        } catch (_e) {
+          // ignore if window was removed or cannot be updated
+        }
+      }),
+    );
+  } catch (_e) {
+    // parent window may be gone
+  }
+};
+
+/**
  * Ensure only the active controller's popups are visible; others are hidden.
  * @param {number} activeControllerTabId
  */
@@ -113,7 +475,7 @@ const showOnlyActiveController = async (activeControllerTabId) => {
   await Promise.all(
     allControllers.map(async (tabId) => {
       if (tabId === activeControllerTabId) {
-        await tileControllerPopups(tabId);
+        await applyProportionalLayout(tabId);
       } else {
         await hideControllerPopups(tabId);
       }
@@ -366,6 +728,15 @@ chrome.action.onClicked.addListener(async (currentTab) => {
 
     // Track association between the blank tab and its popup windows
     if (typeof blankTab.id === 'number') {
+      // Initialize equal width ratios for all popups
+      /** @type {Record<number, number>} */
+      const widthRatios = {};
+      const equalRatio =
+        popupWindowIds.length > 0 ? 1 / popupWindowIds.length : 1;
+      for (const winId of popupWindowIds) {
+        widthRatios[winId] = equalRatio;
+      }
+
       controllerByTabId.set(blankTab.id, {
         parentWindowId: currentTab.windowId,
         popupWindowIds,
@@ -373,6 +744,7 @@ chrome.action.onClicked.addListener(async (currentTab) => {
           typeof blankTab.index === 'number' ? blankTab.index : 0,
         controllerTabGroupId:
           typeof blankTab.groupId === 'number' ? blankTab.groupId : -1,
+        widthRatios,
       });
       for (const winId of popupWindowIds) {
         popupWindowIdToControllerTabId.set(winId, blankTab.id);
@@ -542,7 +914,7 @@ chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
       ([, ctl]) => ctl.parentWindowId === windowId,
     );
     await Promise.all(
-      affectedControllers.map(([tabId]) => tileControllerPopups(tabId)),
+      affectedControllers.map(([tabId]) => applyProportionalLayout(tabId)),
     );
 
     // If a popup window was maximized, maximize the parent window and re-tile
@@ -565,7 +937,7 @@ chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
                 100,
               );
             }
-            await tileControllerPopups(controllerFromPopup);
+            await applyProportionalLayout(controllerFromPopup);
           }
         }
       } catch (_e) {
@@ -584,7 +956,7 @@ chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
           }
           const timeoutId = setTimeout(() => {
             retileTimeoutByController.delete(controllerFromPopup);
-            tileControllerPopups(controllerFromPopup);
+            reflowAfterPopupResize(controllerFromPopup, windowId);
           }, 120);
           // @ts-ignore - timeout id type differs across runtimes
           retileTimeoutByController.set(controllerFromPopup, timeoutId);
@@ -686,6 +1058,26 @@ chrome.windows.onRemoved.addListener((windowId) => {
   controller.popupWindowIds = controller.popupWindowIds.filter(
     (id) => id !== windowId,
   );
+
+  // Remove and normalize width ratios
+  if (controller.widthRatios) {
+    delete controller.widthRatios[windowId];
+
+    // Renormalize remaining ratios
+    const remainingIds = controller.popupWindowIds;
+    if (remainingIds.length > 0) {
+      const remainingRatios = remainingIds.map(
+        (id) => controller.widthRatios[id] || 0,
+      );
+      const ratioSum =
+        remainingRatios.reduce((sum, ratio) => sum + ratio, 0) || 1;
+
+      for (let i = 0; i < remainingIds.length; i++) {
+        controller.widthRatios[remainingIds[i]] = remainingRatios[i] / ratioSum;
+      }
+    }
+  }
+
   // If all popups are gone, we can optionally close the controller tab to avoid orphaning
   if (controller.popupWindowIds.length === 0) {
     chrome.tabs.remove(controllerTabId).catch(() => {});
@@ -748,7 +1140,7 @@ chrome.windows.onRemoved.addListener((windowId) => {
       }
     })();
   } else {
-    // Re-tile remaining popups to fill gaps
-    tileControllerPopups(controllerTabId).catch(() => {});
+    // Re-tile remaining popups to fill gaps using proportional layout
+    applyProportionalLayout(controllerTabId).catch(() => {});
   }
 });
