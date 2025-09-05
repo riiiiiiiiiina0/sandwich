@@ -180,10 +180,7 @@ const reflowAfterPopupResize = async (
 
     // Clamp the resized popup to be within the screen's work area
     resized.width = Math.max(50, Math.min(resized.width, screen.width));
-    resized.height = Math.max(
-      100,
-      Math.min(resized.height, screen.height),
-    );
+    resized.height = Math.max(100, Math.min(resized.height, screen.height));
     resized.left = Math.max(
       screen.left,
       Math.min(resized.left, screen.left + screen.width - resized.width),
@@ -1066,12 +1063,38 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
       }
     }
 
-    // Move those tabs into the parent window at the latest controller tab index
+    // Check if parent window still exists, create new window if not
+    let targetWindowId = controller.parentWindowId;
+    let targetTabGroupId = controller.controllerTabGroupId;
     let idx = controller.controllerTabIndex || 0;
-    for (const tabIdToMove of popupActiveTabIds) {
+
+    try {
+      await chrome.windows.get(controller.parentWindowId);
+    } catch (_e) {
+      // Parent window is gone, create a new window for the first tab
+      if (popupActiveTabIds.length > 0) {
+        try {
+          const newWindow = await chrome.windows.create({
+            tabId: popupActiveTabIds[0],
+            state: 'maximized',
+          });
+          if (newWindow?.id) {
+            targetWindowId = newWindow.id;
+            targetTabGroupId = -1; // Use -1 to indicate no group (instead of null)
+            idx = 1; // First tab is already in the new window
+          }
+        } catch (_e) {
+          // Failed to create new window, fallback to default behavior
+        }
+      }
+    }
+
+    // Move remaining tabs into the target window
+    for (let i = idx === 1 ? 1 : 0; i < popupActiveTabIds.length; i++) {
+      const tabIdToMove = popupActiveTabIds[i];
       try {
         await chrome.tabs.move(tabIdToMove, {
-          windowId: controller.parentWindowId,
+          windowId: targetWindowId,
           index: idx,
         });
         idx += 1;
@@ -1081,20 +1104,17 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
     }
 
     // If the controller was in a tab group, regroup each moved tab and re-position before the stored index
-    if (
-      typeof controller.controllerTabGroupId === 'number' &&
-      controller.controllerTabGroupId >= 0
-    ) {
+    if (typeof targetTabGroupId === 'number' && targetTabGroupId >= 0) {
       const baseIndex = controller.controllerTabIndex || 0;
       for (let i = 0; i < popupActiveTabIds.length; i++) {
         const movedTabId = popupActiveTabIds[i];
         try {
           await chrome.tabs.group({
             tabIds: movedTabId,
-            groupId: controller.controllerTabGroupId,
+            groupId: targetTabGroupId,
           });
           await chrome.tabs.move(movedTabId, {
-            windowId: controller.parentWindowId,
+            windowId: targetWindowId,
             index: baseIndex + i,
           });
         } catch (_e) {
