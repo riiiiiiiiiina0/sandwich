@@ -372,9 +372,9 @@ const reflowAfterPopupResize = async (
       Math.min(resized.top, screen.top + screen.height - resized.height),
     );
 
-    // Use the resized popup's screen-clamped values to align sibling popups
+    // Use the parent's inner top (below address bar) to align sibling popups
+    const topForPopups = Math.max(screen.top, parentTop + ADDRESS_BAR_HEIGHT);
     const availableHeight = resized.height;
-    const topForPopups = resized.top;
 
     // Sort by left for deterministic ordering
     popups.sort((a, b) => a.left - b.left);
