@@ -1066,39 +1066,64 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
       }
     }
 
-    // Move those tabs into the parent window at the latest controller tab index
-    let idx = controller.controllerTabIndex || 0;
-    for (const tabIdToMove of popupActiveTabIds) {
-      try {
-        await chrome.tabs.move(tabIdToMove, {
-          windowId: controller.parentWindowId,
-          index: idx,
-        });
-        idx += 1;
-      } catch (_e) {
-        // ignore failures per tab
-      }
-    }
+    if (popupActiveTabIds.length > 0) {
+      // If the parent window is closing, we need a new window for the tabs.
+      if (removeInfo.isWindowClosing) {
+        const firstTabId = popupActiveTabIds.shift();
+        if (typeof firstTabId === 'number') {
+          try {
+            // Create a new window with the first tab
+            const newWindow = await chrome.windows.create({
+              tabId: firstTabId,
+              state: 'normal',
+            });
+            // Move the rest of the tabs into the new window
+            if (newWindow?.id && popupActiveTabIds.length > 0) {
+              await chrome.tabs.move(popupActiveTabIds, {
+                windowId: newWindow.id,
+                index: 1,
+              });
+            }
+          } catch (e) {
+            console.error('Failed to restore tabs to new window:', e);
+          }
+        }
+      } else {
+        // Parent window is not closing, move tabs into it.
+        let idx = controller.controllerTabIndex || 0;
+        for (const tabIdToMove of popupActiveTabIds) {
+          try {
+            await chrome.tabs.move(tabIdToMove, {
+              windowId: controller.parentWindowId,
+              index: idx,
+            });
+            idx += 1;
+          } catch (_e) {
+            // ignore failures per tab
+          }
+        }
 
-    // If the controller was in a tab group, regroup each moved tab and re-position before the stored index
-    if (
-      typeof controller.controllerTabGroupId === 'number' &&
-      controller.controllerTabGroupId >= 0
-    ) {
-      const baseIndex = controller.controllerTabIndex || 0;
-      for (let i = 0; i < popupActiveTabIds.length; i++) {
-        const movedTabId = popupActiveTabIds[i];
-        try {
-          await chrome.tabs.group({
-            tabIds: movedTabId,
-            groupId: controller.controllerTabGroupId,
-          });
-          await chrome.tabs.move(movedTabId, {
-            windowId: controller.parentWindowId,
-            index: baseIndex + i,
-          });
-        } catch (_e) {
-          // ignore
+        // If the controller was in a tab group, regroup the moved tabs.
+        if (
+          typeof controller.controllerTabGroupId === 'number' &&
+          controller.controllerTabGroupId >= 0
+        ) {
+          const baseIndex = controller.controllerTabIndex || 0;
+          for (let i = 0; i < popupActiveTabIds.length; i++) {
+            const movedTabId = popupActiveTabIds[i];
+            try {
+              await chrome.tabs.group({
+                tabIds: movedTabId,
+                groupId: controller.controllerTabGroupId,
+              });
+              await chrome.tabs.move(movedTabId, {
+                windowId: controller.parentWindowId,
+                index: baseIndex + i,
+              });
+            } catch (_e) {
+              // ignore
+            }
+          }
         }
       }
     }
