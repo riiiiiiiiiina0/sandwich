@@ -1089,22 +1089,22 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
       }
     }
 
-    // Move remaining tabs into the target window
-    for (let i = idx === 1 ? 1 : 0; i < popupActiveTabIds.length; i++) {
-      const tabIdToMove = popupActiveTabIds[i];
-      try {
-        await chrome.tabs.move(tabIdToMove, {
-          windowId: targetWindowId,
-          index: idx,
-        });
-        idx += 1;
-      } catch (_e) {
-        // ignore failures per tab
-      }
-    }
-
-    // If the controller was in a tab group, regroup each moved tab and re-position before the stored index
+    // If the controller was in a tab group, handle group placement directly
     if (typeof targetTabGroupId === 'number' && targetTabGroupId >= 0) {
+      // Move tabs to the target window first (to the end to avoid index issues)
+      for (let i = idx === 1 ? 1 : 0; i < popupActiveTabIds.length; i++) {
+        const tabIdToMove = popupActiveTabIds[i];
+        try {
+          await chrome.tabs.move(tabIdToMove, {
+            windowId: targetWindowId,
+            index: -1, // Move to end first
+          });
+        } catch (_e) {
+          // ignore failures per tab
+        }
+      }
+
+      // Then group all tabs and position them correctly within the group
       const baseIndex = controller.controllerTabIndex || 0;
       for (let i = 0; i < popupActiveTabIds.length; i++) {
         const movedTabId = popupActiveTabIds[i];
@@ -1119,6 +1119,20 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
           });
         } catch (_e) {
           // ignore
+        }
+      }
+    } else {
+      // Original logic for tabs not in a group
+      for (let i = idx === 1 ? 1 : 0; i < popupActiveTabIds.length; i++) {
+        const tabIdToMove = popupActiveTabIds[i];
+        try {
+          await chrome.tabs.move(tabIdToMove, {
+            windowId: targetWindowId,
+            index: idx,
+          });
+          idx += 1;
+        } catch (_e) {
+          // ignore failures per tab
         }
       }
     }
@@ -1190,29 +1204,35 @@ chrome.windows.onRemoved.addListener((windowId) => {
         } catch (_e) {}
 
         if (typeof activeTabId === 'number') {
-          // Move the tab back to parent window at the controller's index
-          try {
-            await chrome.tabs.move(activeTabId, {
-              windowId: controller.parentWindowId,
-              index: controller.controllerTabIndex || 0,
-            });
-            // If controller had a group, re-group the moved tab and reposition
-            if (
-              typeof controller.controllerTabGroupId === 'number' &&
-              controller.controllerTabGroupId >= 0
-            ) {
-              try {
-                await chrome.tabs.group({
-                  tabIds: activeTabId,
-                  groupId: controller.controllerTabGroupId,
-                });
-                await chrome.tabs.move(activeTabId, {
-                  windowId: controller.parentWindowId,
-                  index: controller.controllerTabIndex || 0,
-                });
-              } catch (_e) {}
-            }
-          } catch (_e) {}
+          // Check if controller had a group
+          if (
+            typeof controller.controllerTabGroupId === 'number' &&
+            controller.controllerTabGroupId >= 0
+          ) {
+            // For grouped tabs, move to end first, then group and position
+            try {
+              await chrome.tabs.move(activeTabId, {
+                windowId: controller.parentWindowId,
+                index: -1, // Move to end first
+              });
+              await chrome.tabs.group({
+                tabIds: activeTabId,
+                groupId: controller.controllerTabGroupId,
+              });
+              await chrome.tabs.move(activeTabId, {
+                windowId: controller.parentWindowId,
+                index: controller.controllerTabIndex || 0,
+              });
+            } catch (_e) {}
+          } else {
+            // For non-grouped tabs, use original logic
+            try {
+              await chrome.tabs.move(activeTabId, {
+                windowId: controller.parentWindowId,
+                index: controller.controllerTabIndex || 0,
+              });
+            } catch (_e) {}
+          }
         }
 
         // Remove mapping for the last popup and close it
