@@ -28,6 +28,128 @@ const programmaticUpdateWindowIds = new Set();
  */
 let lastFocusedWindowId = null;
 
+// Key to store controllers state in session storage
+const STORAGE_KEY_CONTROLLERS = 'sandwichBear.controllers';
+
+// Ensure we only attempt a restore once per service worker lifecycle
+let hasRestoredControllers = false;
+
+/**
+ * Persist current controllers to session storage so association survives
+ * service worker restarts within the same browser session.
+ */
+const persistControllers = async () => {
+  try {
+    /** @type {{controllerTabId:number,parentWindowId:number,popupWindowIds:number[],controllerTabIndex:number,controllerTabGroupId:number,widthRatios:Record<number, number>}[]} */
+    const controllers = [...controllerByTabId.entries()].map(
+      ([controllerTabId, ctl]) => ({ controllerTabId, ...ctl }),
+    );
+    await chrome.storage.session.set({
+      [STORAGE_KEY_CONTROLLERS]: controllers,
+    });
+  } catch (_e) {}
+};
+
+/**
+ * Restore controllers from session storage. Prunes stale tabs/windows.
+ */
+const restoreControllers = async () => {
+  try {
+    const data = await chrome.storage.session.get(STORAGE_KEY_CONTROLLERS);
+    /** @type {any[]} */
+    const saved = Array.isArray(data?.[STORAGE_KEY_CONTROLLERS])
+      ? data[STORAGE_KEY_CONTROLLERS]
+      : [];
+
+    controllerByTabId.clear();
+    popupWindowIdToControllerTabId.clear();
+
+    for (const item of saved) {
+      const controllerTabId = Number(item?.controllerTabId);
+      if (!Number.isFinite(controllerTabId)) continue;
+      // Verify controller tab still exists
+      let tabExists = false;
+      try {
+        const t = await chrome.tabs.get(controllerTabId);
+        tabExists = !!t && typeof t.id === 'number';
+      } catch (_e) {
+        tabExists = false;
+      }
+      if (!tabExists) continue;
+
+      // Filter popup windows that still exist
+      const popupIds = Array.isArray(item?.popupWindowIds)
+        ? item.popupWindowIds
+        : [];
+      /** @type {number[]} */
+      const existingPopupIds = [];
+      for (const winId of popupIds) {
+        try {
+          const w = await chrome.windows.get(winId);
+          if (w && typeof w.id === 'number') existingPopupIds.push(winId);
+        } catch (_e) {}
+      }
+      if (existingPopupIds.length === 0) continue;
+
+      // Rebuild width ratios only for existing popups
+      /** @type {Record<number, number>} */
+      const widthRatios = {};
+      const rawRatios = item?.widthRatios || {};
+      const ratios = existingPopupIds.map((id) => Number(rawRatios[id] || 0));
+      const sum =
+        ratios.reduce((s, r) => s + (Number.isFinite(r) ? r : 0), 0) || 1;
+      for (let i = 0; i < existingPopupIds.length; i++) {
+        widthRatios[existingPopupIds[i]] =
+          Math.max(0, Number.isFinite(ratios[i]) ? ratios[i] : 0) / sum;
+      }
+
+      controllerByTabId.set(controllerTabId, {
+        parentWindowId: Number(item?.parentWindowId) || -1,
+        popupWindowIds: existingPopupIds,
+        controllerTabIndex: Number(item?.controllerTabIndex) || 0,
+        controllerTabGroupId: Number(item?.controllerTabGroupId) || -1,
+        widthRatios,
+      });
+      for (const winId of existingPopupIds) {
+        popupWindowIdToControllerTabId.set(winId, controllerTabId);
+      }
+    }
+  } catch (_e) {
+    // ignore
+  }
+};
+
+/**
+ * Ensure controllers have been restored from storage once in this lifecycle.
+ */
+const ensureRestoredControllers = async () => {
+  if (hasRestoredControllers) return;
+  hasRestoredControllers = true;
+  await restoreControllers();
+};
+
+/**
+ * Focus the first popup window of the given controller to bring popups to front.
+ * @param {number} controllerTabId
+ */
+const focusFirstPopupWindow = async (controllerTabId) => {
+  try {
+    const ctl = controllerByTabId.get(controllerTabId);
+    if (
+      !ctl ||
+      !Array.isArray(ctl.popupWindowIds) ||
+      ctl.popupWindowIds.length === 0
+    )
+      return;
+    const firstPopupId = ctl.popupWindowIds[0];
+    if (typeof firstPopupId === 'number') {
+      await chrome.windows.update(firstPopupId, { focused: true });
+    }
+  } catch (_e) {
+    // ignore
+  }
+};
+
 /**
  * Debounce timers per controller to avoid excessive re-tiles while dragging.
  * @type {Map<number, number>}
@@ -573,6 +695,7 @@ const refreshControllerFromTab = async (controllerTabId) => {
       controller.controllerTabGroupId = tab.groupId;
     if (typeof tab.windowId === 'number')
       controller.parentWindowId = tab.windowId;
+    await persistControllers();
   } catch (_e) {
     // ignore
   }
@@ -659,6 +782,7 @@ chrome.windows.onFocusChanged.addListener(() => {
 // Initialize title and focus tracking on install/startup
 chrome.runtime.onInstalled.addListener(async () => {
   updateActionTitle();
+  await ensureRestoredControllers();
   try {
     const currentWindow = await chrome.windows.getCurrent();
     lastFocusedWindowId = currentWindow?.id || null;
@@ -668,6 +792,7 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 chrome.runtime.onStartup.addListener(async () => {
   updateActionTitle();
+  await ensureRestoredControllers();
   try {
     const currentWindow = await chrome.windows.getCurrent();
     lastFocusedWindowId = currentWindow?.id || null;
@@ -679,6 +804,7 @@ chrome.runtime.onStartup.addListener(async () => {
 // Handle action button click: open up to the first 4 highlighted tabs in popup windows
 chrome.action.onClicked.addListener(async (currentTab) => {
   try {
+    await ensureRestoredControllers();
     // If clicking while on a controller tab, do nothing
     if (
       typeof currentTab.id === 'number' &&
@@ -779,6 +905,7 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       for (const winId of popupWindowIds) {
         popupWindowIdToControllerTabId.set(winId, blankTab.id);
       }
+      await persistControllers();
       // Activate the controller tab and ensure its popups are shown/positioned
       try {
         await chrome.tabs.update(blankTab.id, { active: true });
@@ -804,10 +931,12 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Hide/show popups when the active tab changes
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
   try {
+    await ensureRestoredControllers();
     const tabId = activeInfo.tabId;
     if (controllerByTabId.has(tabId)) {
       await refreshControllerFromTab(tabId);
       await showOnlyActiveController(tabId);
+      await focusFirstPopupWindow(tabId);
       // Active controller tab: use active popup's meta if any; else reset
       try {
         const ctl = controllerByTabId.get(tabId);
@@ -850,6 +979,7 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
 // When the focused window changes, update visibility accordingly
 chrome.windows.onFocusChanged.addListener(async (windowId) => {
   try {
+    await ensureRestoredControllers();
     if (windowId === chrome.windows.WINDOW_ID_NONE) {
       // Hide all if focus lost
       await Promise.all(
@@ -868,6 +998,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
     if (activeTab?.id != null && controllerByTabId.has(activeTab.id)) {
       await refreshControllerFromTab(activeTab.id);
       await showOnlyActiveController(activeTab.id);
+      await focusFirstPopupWindow(activeTab.id);
       // Update meta for active controller
       try {
         const ctl = controllerByTabId.get(activeTab.id);
@@ -967,6 +1098,7 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 // When the parent window moves or resizes, retile its popups
 chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
   try {
+    await ensureRestoredControllers();
     const windowId = (typeof winOrId === 'number' ? winOrId : winOrId.id) || -1;
 
     // Ignore bounds events caused by our own updates
@@ -1041,6 +1173,7 @@ chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
 
 // When the controller (blank) tab is closed, restore popups to tabs and cleanup
 chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
+  await ensureRestoredControllers();
   if (!controllerByTabId.has(tabId)) return;
   const controller = controllerByTabId.get(tabId);
   if (!controller) return;
@@ -1151,11 +1284,16 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
     // ignore
   } finally {
     cleanupController(tabId);
+    await persistControllers();
   }
 });
 
 // Cleanup reverse mapping if a popup window is closed manually
 chrome.windows.onRemoved.addListener((windowId) => {
+  // Best-effort restore before cleanup
+  ensureRestoredControllers()
+    .then(() => {})
+    .catch(() => {});
   const controllerTabId = popupWindowIdToControllerTabId.get(windowId);
   if (controllerTabId == null) return;
   popupWindowIdToControllerTabId.delete(windowId);
@@ -1188,6 +1326,7 @@ chrome.windows.onRemoved.addListener((windowId) => {
   if (controller.popupWindowIds.length === 0) {
     chrome.tabs.remove(controllerTabId).catch(() => {});
     cleanupController(controllerTabId);
+    persistControllers().catch(() => {});
   } else if (controller.popupWindowIds.length === 1) {
     // Restore the last remaining popup to a normal tab and clean up
     (async () => {
@@ -1247,6 +1386,7 @@ chrome.windows.onRemoved.addListener((windowId) => {
           await chrome.tabs.remove(controllerTabId);
         } catch (_e) {}
         cleanupController(controllerTabId);
+        await persistControllers();
       } catch (_e) {
         // ignore
       }
@@ -1254,5 +1394,6 @@ chrome.windows.onRemoved.addListener((windowId) => {
   } else {
     // Re-tile remaining popups to fill gaps using proportional layout
     applyProportionalLayout(controllerTabId).catch(() => {});
+    persistControllers().catch(() => {});
   }
 });

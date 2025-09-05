@@ -15,7 +15,8 @@
   "permissions": [
     "tabs",
     "tabGroups",
-    "system.display"
+    "system.display",
+    "storage"
   ],
   "host_permissions": [
     "<all_urls>"
