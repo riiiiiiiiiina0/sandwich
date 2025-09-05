@@ -515,13 +515,32 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
 // When the parent window moves or resizes, retile its popups
 chrome.windows.onBoundsChanged.addListener(async (winOrId) => {
   try {
-    const windowId = typeof winOrId === 'number' ? winOrId : winOrId.id;
+    const windowId = (typeof winOrId === 'number' ? winOrId : winOrId.id) || -1;
     const affectedControllers = [...controllerByTabId.entries()].filter(
       ([, ctl]) => ctl.parentWindowId === windowId,
     );
     await Promise.all(
       affectedControllers.map(([tabId]) => tileControllerPopups(tabId)),
     );
+
+    // If a popup window was maximized, maximize the parent window and re-tile
+    const controllerFromPopup = popupWindowIdToControllerTabId.get(windowId);
+    if (typeof controllerFromPopup === 'number') {
+      try {
+        const changedWin = await chrome.windows.get(windowId);
+        if (changedWin?.state === 'maximized') {
+          const ctl = controllerByTabId.get(controllerFromPopup);
+          if (ctl && typeof ctl.parentWindowId === 'number') {
+            await chrome.windows.update(ctl.parentWindowId, {
+              state: 'maximized',
+            });
+            await tileControllerPopups(controllerFromPopup);
+          }
+        }
+      } catch (_e) {
+        // ignore
+      }
+    }
   } catch (_e) {
     // ignore
   }
