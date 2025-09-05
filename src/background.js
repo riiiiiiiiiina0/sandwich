@@ -159,64 +159,43 @@ const reflowAfterPopupResize = async (
     const resized = popups.find((p) => p.id === resizedPopupWindowId);
     if (!resized) return;
 
-    // Ensure parent contains resized popup horizontally (with INSET)
-    const parentRight = parentLeft + parentWidth;
-    const resizedRight = resized.left + resized.width;
-    let newParentLeft = parentLeft;
-    let newParentRight = parentRight;
-    if (resized.left < parentLeft + INSET) {
-      newParentLeft = Math.min(parentLeft, resized.left - INSET);
+    // Get screen info to clamp popup resizing/movement
+    const displays = await chrome.system.display.getInfo({});
+    if (!displays || displays.length === 0) return;
+    const parentCenterX = parentLeft + parentWidth / 2;
+    const parentCenterY = parentTop + parentHeight / 2;
+    let display = displays.find((d) => {
+      const area = d.workArea;
+      return (
+        parentCenterX >= area.left &&
+        parentCenterX < area.left + area.width &&
+        parentCenterY >= area.top &&
+        parentCenterY < area.top + area.height
+      );
+    });
+    if (!display) {
+      display = displays.find((d) => d.isPrimary) || displays[0];
     }
-    if (resizedRight > parentRight - INSET) {
-      newParentRight = Math.max(parentRight, resizedRight + INSET);
-    }
+    const screen = display.workArea;
 
-    // Ensure parent height can accommodate desired popup height
-    const desiredAvailableHeight = Math.max(100, resized.height);
-    const requiredParentHeight =
-      ADDRESS_BAR_HEIGHT + INSET + desiredAvailableHeight;
-    let newParentTop = parentTop;
-    let newParentHeight = Math.max(parentHeight, requiredParentHeight);
-
-    // Apply parent expansion if needed
-    if (
-      newParentLeft !== parentLeft ||
-      newParentRight !== parentRight ||
-      newParentHeight !== parentHeight
-    ) {
-      const updatedLeft = newParentLeft;
-      const updatedWidth = Math.max(50, newParentRight - newParentLeft);
-      programmaticUpdateWindowIds.add(controller.parentWindowId);
-      try {
-        await chrome.windows.update(controller.parentWindowId, {
-          state: 'normal',
-          left: updatedLeft,
-          top: newParentTop,
-          width: updatedWidth,
-          height: newParentHeight,
-        });
-      } finally {
-        setTimeout(
-          () => programmaticUpdateWindowIds.delete(controller.parentWindowId),
-          100,
-        );
-      }
-      // Refresh parent bounds after update
-      try {
-        const pw = await chrome.windows.get(controller.parentWindowId);
-        parentLeft = pw.left || parentLeft;
-        parentTop = pw.top || parentTop;
-        parentWidth = pw.width || parentWidth;
-        parentHeight = pw.height || parentHeight;
-      } catch (_e) {}
-    }
-
-    // Compute layout regions
-    const availableHeight = Math.max(
+    // Clamp the resized popup to be within the screen's work area
+    resized.width = Math.max(50, Math.min(resized.width, screen.width));
+    resized.height = Math.max(
       100,
-      parentHeight - ADDRESS_BAR_HEIGHT - INSET,
+      Math.min(resized.height, screen.height),
     );
-    const topForPopups = parentTop + ADDRESS_BAR_HEIGHT;
+    resized.left = Math.max(
+      screen.left,
+      Math.min(resized.left, screen.left + screen.width - resized.width),
+    );
+    resized.top = Math.max(
+      screen.top,
+      Math.min(resized.top, screen.top + screen.height - resized.height),
+    );
+
+    // Use the resized popup's screen-clamped values to align sibling popups
+    const availableHeight = resized.height;
+    const topForPopups = resized.top;
 
     // Sort by left for deterministic ordering
     popups.sort((a, b) => a.left - b.left);
@@ -225,17 +204,11 @@ const reflowAfterPopupResize = async (
     const leftGroup = popups.slice(0, idx);
     const rightGroup = popups.slice(idx + 1);
 
-    // Constrain resized popup to be within new parent horizontally
+    // Use the screen-clamped values for the resized popup
     const parentInnerLeft = parentLeft + INSET;
     const parentInnerRight = parentLeft + parentWidth - INSET;
-    let resizedLeftClamped = Math.max(
-      parentInnerLeft,
-      Math.min(resized.left, parentInnerRight - 50),
-    );
-    let resizedWidthClamped = Math.max(
-      50,
-      Math.min(resized.width, parentInnerRight - resizedLeftClamped),
-    );
+    let resizedLeftClamped = resized.left;
+    let resizedWidthClamped = resized.width;
 
     // Left region: from inner-left to (resizedLeftClamped - GAP)
     const leftRegionStart = parentInnerLeft;
@@ -291,7 +264,7 @@ const reflowAfterPopupResize = async (
       cursor += Math.max(50, width) + GAP;
     }
 
-    // Update the resized popup itself (normalize top/height, keep its width)
+    // Update the resized popup itself
     programmaticUpdateWindowIds.add(resizedPopupWindowId);
     try {
       await chrome.windows.update(resizedPopupWindowId, {
