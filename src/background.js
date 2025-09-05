@@ -1,7 +1,12 @@
+// constants
+const INSET = 5;
+const GAP = 3;
+const ADDRESS_BAR_HEIGHT = 40;
+
 /**
  * Controller state associated with a newly created blank tab.
  * Keys are controller blank tab ids; values store popup windows and parent window.
- * @type {Map<number, { parentWindowId: number, popupWindowIds: number[], addressBarHeight: number, controllerTabIndex: number, controllerTabGroupId: number }>}
+ * @type {Map<number, { parentWindowId: number, popupWindowIds: number[], controllerTabIndex: number, controllerTabGroupId: number }>}
  */
 const controllerByTabId = new Map();
 
@@ -48,19 +53,29 @@ const tileControllerPopups = async (controllerTabId) => {
     const windowLeft = parentWindow.left || 0;
 
     const count = Math.max(1, controller.popupWindowIds.length);
-    const popupWidth = Math.floor(windowWidth / count);
-    const addressBarHeight = controller.addressBarHeight;
+    const availableWidth = Math.max(0, windowWidth - INSET - INSET);
+    const availableHeight = Math.max(
+      0,
+      windowHeight - ADDRESS_BAR_HEIGHT - INSET,
+    );
+    const totalGaps = Math.max(0, (count - 1) * GAP);
+    const availableWidthNoGaps = Math.max(0, availableWidth - totalGaps);
+    const baseColumnWidth = Math.floor(availableWidthNoGaps / count);
 
     await Promise.all(
       controller.popupWindowIds.map(async (winId, i) => {
         try {
+          const isLast = i === count - 1;
+          const columnLeft = windowLeft + INSET + i * (baseColumnWidth + GAP);
+          const columnWidth = isLast
+            ? availableWidthNoGaps - baseColumnWidth * i
+            : baseColumnWidth;
           await chrome.windows.update(winId, {
             state: 'normal',
-            focused: true,
-            left: windowLeft + i * popupWidth,
-            top: windowTop + addressBarHeight,
-            width: popupWidth,
-            height: Math.max(100, windowHeight - addressBarHeight),
+            left: columnLeft,
+            top: windowTop + ADDRESS_BAR_HEIGHT,
+            width: Math.max(50, columnWidth),
+            height: Math.max(100, availableHeight),
           });
         } catch (_e) {
           // ignore if window was removed or cannot be updated
@@ -100,6 +115,49 @@ const cleanupController = (controllerTabId) => {
     popupWindowIdToControllerTabId.delete(winId);
   }
   controllerByTabId.delete(controllerTabId);
+};
+
+/**
+ * Post a message into the controller tab to update its title/favicon.
+ * @param {number} controllerTabId
+ * @param {{ title?: string, favicon?: string } | null} metaOrNull
+ */
+const postControllerMeta = async (controllerTabId, metaOrNull) => {
+  try {
+    // Ensure the tab still exists
+    await chrome.tabs.get(controllerTabId);
+  } catch (e) {
+    console.error('Failed to post controller meta:', e);
+    return;
+  }
+  let message;
+  if (metaOrNull) {
+    message = { type: 'split:updateMeta', payload: metaOrNull };
+  } else {
+    /** @type {string[]} */
+    const titles = [];
+    try {
+      const ctl = controllerByTabId.get(controllerTabId);
+      if (ctl) {
+        for (const winId of ctl.popupWindowIds) {
+          try {
+            const win = await chrome.windows.get(winId, { populate: true });
+            const t = win.tabs?.find((x) => x.active) || win.tabs?.[0];
+            if (t?.title) titles.push(t.title);
+          } catch (_e) {
+            // ignore
+          }
+        }
+      }
+    } catch (_e) {}
+    message = { type: 'split:resetMeta', payload: { titles } };
+  }
+  try {
+    // Use tabs.sendMessage as a reliable channel to split page content
+    await chrome.tabs.sendMessage(controllerTabId, message);
+  } catch (e) {
+    console.error('Failed to send controller meta:', e);
+  }
 };
 
 /**
@@ -240,9 +298,9 @@ chrome.action.onClicked.addListener(async (currentTab) => {
 
     const firstTab = targetTabs[0];
 
-    // Create a new empty tab before the first target tab
+    // Create a new controller tab (split.html) before the first target tab
     const blankTab = await chrome.tabs.create({
-      url: 'about:blank',
+      url: chrome.runtime.getURL('pages/split.html'),
       windowId: currentTab.windowId,
       index: firstTab.index,
     });
@@ -254,22 +312,35 @@ chrome.action.onClicked.addListener(async (currentTab) => {
     const windowTop = window.top || 0;
     const windowLeft = window.left || 0;
 
-    const popupWidth = Math.floor(windowWidth / targetTabs.length);
+    const availableWidth = Math.max(0, windowWidth - INSET - INSET);
+    const totalGaps = Math.max(0, (targetTabs.length - 1) * GAP);
+    const availableWidthNoGaps = Math.max(0, availableWidth - totalGaps);
+    const availableHeight = Math.max(
+      0,
+      windowHeight - ADDRESS_BAR_HEIGHT - INSET,
+    );
+    const baseColumnWidth = Math.floor(
+      availableWidthNoGaps / targetTabs.length,
+    );
 
-    const addressBarHeight = 40;
-
-    // Create a popup window for each tab
+    // Create a popup window for each tab by moving the tab (preserves state)
     /** @type {number[]} */
     const popupWindowIds = [];
     for (let i = 0; i < targetTabs.length; i++) {
       const tab = targetTabs[i];
+      if (typeof tab.id !== 'number') continue;
+      const isLast = i === targetTabs.length - 1;
+      const columnLeft = windowLeft + INSET + i * (baseColumnWidth + GAP);
+      const columnWidth = isLast
+        ? availableWidthNoGaps - baseColumnWidth * i
+        : baseColumnWidth;
       const popup = await chrome.windows.create({
-        url: tab.url,
+        tabId: tab.id,
         type: 'popup',
-        left: windowLeft + i * popupWidth,
-        top: windowTop + addressBarHeight,
-        width: popupWidth,
-        height: windowHeight - addressBarHeight,
+        left: columnLeft,
+        top: windowTop + ADDRESS_BAR_HEIGHT,
+        width: Math.max(50, columnWidth),
+        height: Math.max(100, availableHeight),
       });
       if (popup?.id != null) {
         popupWindowIds.push(popup.id);
@@ -281,7 +352,6 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       controllerByTabId.set(blankTab.id, {
         parentWindowId: currentTab.windowId,
         popupWindowIds,
-        addressBarHeight,
         controllerTabIndex:
           typeof blankTab.index === 'number' ? blankTab.index : 0,
         controllerTabGroupId:
@@ -299,17 +369,7 @@ chrome.action.onClicked.addListener(async (currentTab) => {
       }
     }
 
-    // Close the used highlighted tabs
-    try {
-      const tabIdsToClose = targetTabs
-        .map((t) => t.id)
-        .filter((id) => typeof id === 'number');
-      if (tabIdsToClose.length > 0) {
-        await chrome.tabs.remove(/** @type {number[]} */ (tabIdsToClose));
-      }
-    } catch (closeErr) {
-      console.error('Failed to close used highlighted tabs:', closeErr);
-    }
+    // Note: original tabs were moved into popups, so no need to close them
   } catch (error) {
     console.error('Failed to open popup windows from highlighted tabs:', error);
   }
@@ -329,6 +389,29 @@ chrome.tabs.onActivated.addListener(async (activeInfo) => {
     if (controllerByTabId.has(tabId)) {
       await refreshControllerFromTab(tabId);
       await showOnlyActiveController(tabId);
+      // Active controller tab: use active popup's meta if any; else reset
+      try {
+        const ctl = controllerByTabId.get(tabId);
+        if (ctl) {
+          const activePopup = ctl.popupWindowIds[0];
+          if (typeof activePopup === 'number') {
+            const win = await chrome.windows.get(activePopup, {
+              populate: true,
+            });
+            const activePopupTab =
+              win.tabs?.find((t) => t.active) || win.tabs?.[0];
+            await postControllerMeta(
+              tabId,
+              activePopupTab?.title
+                ? {
+                    title: activePopupTab.title,
+                    favicon: activePopupTab.favIconUrl || undefined,
+                  }
+                : null,
+            );
+          }
+        }
+      } catch (_e) {}
     } else {
       // If leaving any controller's tab, hide all controllers in this window
       await Promise.all(
@@ -355,20 +438,75 @@ chrome.windows.onFocusChanged.addListener(async (windowId) => {
       );
       return;
     }
+
     const [activeTab] = await chrome.tabs.query({ active: true, windowId });
     if (activeTab?.id != null && controllerByTabId.has(activeTab.id)) {
       await refreshControllerFromTab(activeTab.id);
       await showOnlyActiveController(activeTab.id);
-    } else {
-      // Hide controllers whose parent is this window
-      await Promise.all(
-        [...controllerByTabId.entries()].map(async ([controllerTabId, ctl]) => {
-          if (ctl.parentWindowId === windowId) {
-            await hideControllerPopups(controllerTabId);
+      // Update meta for active controller
+      try {
+        const ctl = controllerByTabId.get(activeTab.id);
+        if (ctl) {
+          const activePopup = ctl.popupWindowIds[0];
+          if (typeof activePopup === 'number') {
+            const win = await chrome.windows.get(activePopup, {
+              populate: true,
+            });
+            const activePopupTab =
+              win.tabs?.find((t) => t.active) || win.tabs?.[0];
+            await postControllerMeta(
+              activeTab.id,
+              activePopupTab?.title
+                ? {
+                    title: activePopupTab.title,
+                    favicon: activePopupTab.favIconUrl || undefined,
+                  }
+                : null,
+            );
           }
-        }),
-      );
+        }
+      } catch (_e) {}
+      return;
     }
+
+    // If a popup window gained focus, update its controller tab meta directly
+    const controllerFromPopup = popupWindowIdToControllerTabId.get(windowId);
+    if (typeof controllerFromPopup === 'number') {
+      try {
+        const win = await chrome.windows.get(windowId, { populate: true });
+        const activePopupTab = win.tabs?.find((t) => t.active) || win.tabs?.[0];
+        await postControllerMeta(
+          controllerFromPopup,
+          activePopupTab?.title
+            ? {
+                title: activePopupTab.title,
+                favicon: activePopupTab.favIconUrl || undefined,
+              }
+            : null,
+        );
+      } catch (e) {
+        console.error('Failed to update controller tab meta:', e);
+      }
+      return;
+    }
+
+    // Hide controllers whose parent is this window
+    await Promise.all(
+      [...controllerByTabId.entries()].map(async ([controllerTabId, ctl]) => {
+        if (ctl.parentWindowId === windowId) {
+          await hideControllerPopups(controllerTabId);
+        }
+      }),
+    );
+
+    // Non-controller active tab: reset any controller tabs in this window
+    await Promise.all(
+      [...controllerByTabId.entries()].map(async ([controllerTabId, ctl]) => {
+        if (ctl.parentWindowId === windowId) {
+          await postControllerMeta(controllerTabId, null);
+        }
+      }),
+    );
   } catch (_e) {
     // ignore
   }
@@ -398,27 +536,28 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
     // Sync latest position/group before restoring
     await refreshControllerFromTab(tabId);
 
-    // Collect URLs from each popup window (active tab preferred)
-    const urls = [];
+    // Collect active tab ids from each popup window (preserve order)
+    /** @type {number[]} */
+    const popupActiveTabIds = [];
     for (const winId of controller.popupWindowIds) {
       try {
         const popupWin = await chrome.windows.get(winId, { populate: true });
         const activeTab =
           popupWin.tabs?.find((t) => t.active) || popupWin.tabs?.[0];
-        if (activeTab?.url) urls.push(activeTab.url);
+        if (typeof activeTab?.id === 'number')
+          popupActiveTabIds.push(activeTab.id);
       } catch (_e) {
         // window may be gone; skip
       }
     }
 
-    // Insert restored tabs at the latest controller tab index
+    // Move those tabs into the parent window at the latest controller tab index
     let idx = controller.controllerTabIndex || 0;
-    for (const url of urls) {
+    for (const tabIdToMove of popupActiveTabIds) {
       try {
-        await chrome.tabs.create({
+        await chrome.tabs.move(tabIdToMove, {
           windowId: controller.parentWindowId,
           index: idx,
-          url,
         });
         idx += 1;
       } catch (_e) {
@@ -426,40 +565,26 @@ chrome.tabs.onRemoved.addListener(async (tabId, removeInfo) => {
       }
     }
 
-    // If the controller was in a tab group, regroup the newly created tabs
+    // If the controller was in a tab group, regroup each moved tab and re-position before the stored index
     if (
       typeof controller.controllerTabGroupId === 'number' &&
       controller.controllerTabGroupId >= 0
     ) {
-      try {
-        // Gather the most recently created tabs starting from starting index
-        const tabs = await chrome.tabs.query({
-          windowId: controller.parentWindowId,
-        });
-        const toGroup = tabs
-          .filter(
-            (t) =>
-              typeof t.index === 'number' &&
-              t.index >= (controller.controllerTabIndex || 0) &&
-              t.index < (controller.controllerTabIndex || 0) + urls.length,
-          )
-          .map((t) => /** @type {number} */ (t.id))
-          .filter((id) => typeof id === 'number');
-        if (toGroup.length > 0) {
-          if (toGroup.length === 1) {
-            await chrome.tabs.group({
-              tabIds: toGroup[0],
-              groupId: controller.controllerTabGroupId,
-            });
-          } else {
-            await chrome.tabs.group({
-              tabIds: /** @type {[number, ...number[]]} */ (toGroup),
-              groupId: controller.controllerTabGroupId,
-            });
-          }
+      const baseIndex = controller.controllerTabIndex || 0;
+      for (let i = 0; i < popupActiveTabIds.length; i++) {
+        const movedTabId = popupActiveTabIds[i];
+        try {
+          await chrome.tabs.group({
+            tabIds: movedTabId,
+            groupId: controller.controllerTabGroupId,
+          });
+          await chrome.tabs.move(movedTabId, {
+            windowId: controller.parentWindowId,
+            index: baseIndex + i,
+          });
+        } catch (_e) {
+          // ignore
         }
-      } catch (_e) {
-        // grouping might fail if group deleted; ignore
       }
     }
 
