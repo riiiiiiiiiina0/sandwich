@@ -304,7 +304,7 @@ const insertAtDivider = (divider, url) => {
  * @param {string} url
  * @returns {HTMLIFrameElement}
  */
-const insertAtEdge = (position, url) => {
+export const insertAtEdge = (position, url) => {
   const iframeContainer = appState.getContainer();
   const isVerticalLayout = appState.getIsVerticalLayout();
 
