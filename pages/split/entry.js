@@ -7,6 +7,7 @@ import {
   updateDividerPlusVisibility,
   attachEdgePlusButtons,
   insertAtEdge,
+  insertAtDivider,
 } from './insert.js';
 import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 import {
@@ -31,11 +32,27 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else if (message.action === 'add-iframe-right') {
       const wrappers = document.querySelectorAll('.iframe-wrapper');
-      if (wrappers.length < 4) {
-        insertAtEdge('tail', message.url);
-      } else {
-        // Optional: notify user that the max number of iframes has been reached
+      if (wrappers.length >= 4) {
         console.log('Maximum number of iframes (4) reached.');
+        return;
+      }
+
+      const sourceIframe = document.querySelector(
+        `iframe[data-frame-id="${message.frameId}"]`,
+      );
+      if (!sourceIframe) {
+        // Fallback if frame not found
+        insertAtEdge('tail', message.url);
+        return;
+      }
+
+      const sourceWrapper = sourceIframe.closest('.iframe-wrapper');
+      const nextElement = sourceWrapper.nextElementSibling;
+
+      if (nextElement && nextElement.classList.contains('iframe-divider')) {
+        insertAtDivider(nextElement, message.url);
+      } else {
+        insertAtEdge('tail', message.url);
       }
     }
   });

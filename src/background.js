@@ -114,18 +114,20 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   }
 });
 
-chrome.contextMenus.onClicked.addListener((info, tab) => {
+chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === CONTEXT_MENU_ID_SPLIT) {
     const currentUrl = tab.url;
     const linkUrl = info.linkUrl;
     const splitUrl = `${chrome.runtime.getURL(
       'pages/split.html',
     )}?urls=${encodeURIComponent(currentUrl)},${encodeURIComponent(linkUrl)}`;
-    chrome.tabs.create({ url: splitUrl, index: tab.index + 1 });
+    await chrome.tabs.create({ url: splitUrl, index: tab.index + 1 });
+    await chrome.tabs.remove(tab.id);
   } else if (info.menuItemId === CONTEXT_MENU_ID_RIGHT) {
     chrome.tabs.sendMessage(tab.id, {
       action: 'add-iframe-right',
       url: info.linkUrl,
+      frameId: info.frameId,
     });
   }
 });

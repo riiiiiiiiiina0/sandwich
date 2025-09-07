@@ -198,7 +198,7 @@ const closeExistingPicker = () => {
  * @param {string} url
  * @returns {HTMLIFrameElement}
  */
-const insertAtDivider = (divider, url) => {
+export const insertAtDivider = (divider, url) => {
   const iframeContainer = appState.getContainer();
   const isVerticalLayout = appState.getIsVerticalLayout();
 
