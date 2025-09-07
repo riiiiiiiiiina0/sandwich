@@ -6,6 +6,7 @@ import {
   attachDividerPlus,
   updateDividerPlusVisibility,
   attachEdgePlusButtons,
+  insertAtEdge,
 } from './insert.js';
 import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 import {
@@ -27,6 +28,14 @@ document.addEventListener('DOMContentLoaded', () => {
         if (iframe) {
           iframe.dataset.frameId = String(sender.frameId);
         }
+      }
+    } else if (message.action === 'add-iframe-right') {
+      const wrappers = document.querySelectorAll('.iframe-wrapper');
+      if (wrappers.length < 4) {
+        insertAtEdge('tail', message.url);
+      } else {
+        // Optional: notify user that the max number of iframes has been reached
+        console.log('Maximum number of iframes (4) reached.');
       }
     }
   });

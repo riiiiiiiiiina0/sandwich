@@ -1,5 +1,8 @@
 // Background script to remove headers that prevent iframe loading
 
+const CONTEXT_MENU_ID_SPLIT = 'open-in-split-view';
+const CONTEXT_MENU_ID_RIGHT = 'open-on-the-right';
+
 chrome.runtime.onInstalled.addListener(() => {
   // Remove existing rules and add new ones
   chrome.declarativeNetRequest
@@ -50,6 +53,19 @@ chrome.runtime.onInstalled.addListener(() => {
     .catch((error) => {
       console.error('Failed to install header removal rules:', error);
     });
+
+  // Create context menus
+  chrome.contextMenus.create({
+    id: CONTEXT_MENU_ID_SPLIT,
+    title: 'Open link in split view',
+    contexts: ['link'],
+  });
+
+  chrome.contextMenus.create({
+    id: CONTEXT_MENU_ID_RIGHT,
+    title: 'Open link on the right',
+    contexts: ['link'],
+  });
 });
 
 // Also handle extension startup
@@ -57,6 +73,45 @@ chrome.runtime.onStartup.addListener(() => {
   console.log(
     'Sandwich Bear extension started - frame-blocking headers will be removed',
   );
+});
+
+const updateContextMenuVisibility = async (tab) => {
+  const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
+  const isSplitPage = tab && tab.url && tab.url.startsWith(splitBaseUrl);
+
+  await chrome.contextMenus.update(CONTEXT_MENU_ID_SPLIT, {
+    visible: !isSplitPage,
+  });
+  await chrome.contextMenus.update(CONTEXT_MENU_ID_RIGHT, {
+    visible: isSplitPage,
+  });
+};
+
+chrome.tabs.onActivated.addListener(async (activeInfo) => {
+  const tab = await chrome.tabs.get(activeInfo.tabId);
+  updateContextMenuVisibility(tab);
+});
+
+chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
+  if (changeInfo.status === 'complete') {
+    updateContextMenuVisibility(tab);
+  }
+});
+
+chrome.contextMenus.onClicked.addListener((info, tab) => {
+  if (info.menuItemId === CONTEXT_MENU_ID_SPLIT) {
+    const currentUrl = tab.url;
+    const linkUrl = info.linkUrl;
+    const splitUrl = `${chrome.runtime.getURL(
+      'pages/split.html',
+    )}?urls=${encodeURIComponent(currentUrl)},${encodeURIComponent(linkUrl)}`;
+    chrome.tabs.create({ url: splitUrl, index: tab.index + 1 });
+  } else if (info.menuItemId === CONTEXT_MENU_ID_RIGHT) {
+    chrome.tabs.sendMessage(tab.id, {
+      action: 'add-iframe-right',
+      url: info.linkUrl,
+    });
+  }
 });
 
 // Update action title to indicate what clicking will do in current context

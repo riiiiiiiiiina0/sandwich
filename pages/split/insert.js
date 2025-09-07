@@ -236,7 +236,7 @@ const insertAtDivider = (divider, url) => {
     document.createElement('iframe')
   );
   iframe.src = url;
-  iframe.name = 'split-page-iframe';
+  iframe.name = `sb-iframe-${Date.now()}`;
   iframe.setAttribute(
     'sandbox',
     'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
@@ -330,7 +330,7 @@ const insertAtEdge = (position, url) => {
     document.createElement('iframe')
   );
   iframe.src = url;
-  iframe.name = 'split-page-iframe';
+  iframe.name = `sb-iframe-${Date.now()}`;
   iframe.setAttribute(
     'sandbox',
     'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
