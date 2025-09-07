@@ -14,7 +14,8 @@
   },
   "permissions": [
     "tabs",
-    "declarativeNetRequest"
+    "declarativeNetRequest",
+    "contextMenus"
   ],
   "host_permissions": [
     "<all_urls>"
