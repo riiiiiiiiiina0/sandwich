@@ -47,10 +47,22 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       const sourceWrapper = sourceIframe.closest('.iframe-wrapper');
-      const nextElement = sourceWrapper.nextElementSibling;
+      if (!sourceWrapper) {
+        // Fallback if wrapper not found
+        insertAtEdge('tail', message.url);
+        return;
+      }
 
-      if (nextElement && nextElement.classList.contains('iframe-divider')) {
-        insertAtDivider(nextElement, message.url);
+      const sourceOrder = parseInt(sourceWrapper.style.order, 10);
+      const dividerOrder = sourceOrder + 1;
+
+      const dividers = document.querySelectorAll('.iframe-divider');
+      const divider = Array.from(dividers).find(
+        (d) => parseInt(d.style.order, 10) === dividerOrder,
+      );
+
+      if (divider) {
+        insertAtDivider(/** @type {HTMLDivElement} */ (divider), message.url);
       } else {
         insertAtEdge('tail', message.url);
       }
