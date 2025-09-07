@@ -79,11 +79,27 @@ const updateContextMenuVisibility = async (tab) => {
   const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
   const isSplitPage = tab && tab.url && tab.url.startsWith(splitBaseUrl);
 
+  let showRightMenu = isSplitPage;
+  if (isSplitPage) {
+    try {
+      const urlObj = new URL(tab.url);
+      const urlsParam = urlObj.searchParams.get('urls');
+      const count = urlsParam
+        ? urlsParam.split(',').filter((u) => u).length
+        : 0;
+      if (count >= 4) {
+        showRightMenu = false;
+      }
+    } catch (e) {
+      // ignore parsing errors
+    }
+  }
+
   await chrome.contextMenus.update(CONTEXT_MENU_ID_SPLIT, {
     visible: !isSplitPage,
   });
   await chrome.contextMenus.update(CONTEXT_MENU_ID_RIGHT, {
-    visible: isSplitPage,
+    visible: showRightMenu,
   });
 };
 
