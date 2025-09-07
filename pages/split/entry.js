@@ -6,6 +6,8 @@ import {
   attachDividerPlus,
   updateDividerPlusVisibility,
   attachEdgePlusButtons,
+  insertAtEdge,
+  insertAtDivider,
 } from './insert.js';
 import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 import {
@@ -27,6 +29,42 @@ document.addEventListener('DOMContentLoaded', () => {
         if (iframe) {
           iframe.dataset.frameId = String(sender.frameId);
         }
+      }
+    } else if (message.action === 'add-iframe-right') {
+      const wrappers = document.querySelectorAll('.iframe-wrapper');
+      if (wrappers.length >= 4) {
+        console.log('Maximum number of iframes (4) reached.');
+        return;
+      }
+
+      const sourceIframe = document.querySelector(
+        `iframe[data-frame-id="${message.frameId}"]`,
+      );
+      if (!sourceIframe) {
+        // Fallback if frame not found
+        insertAtEdge('tail', message.url);
+        return;
+      }
+
+      const sourceWrapper = sourceIframe.closest('.iframe-wrapper');
+      if (!sourceWrapper) {
+        // Fallback if wrapper not found
+        insertAtEdge('tail', message.url);
+        return;
+      }
+
+      const sourceOrder = parseInt(sourceWrapper.style.order, 10);
+      const dividerOrder = sourceOrder + 1;
+
+      const dividers = document.querySelectorAll('.iframe-divider');
+      const divider = Array.from(dividers).find(
+        (d) => parseInt(d.style.order, 10) === dividerOrder,
+      );
+
+      if (divider) {
+        insertAtDivider(/** @type {HTMLDivElement} */ (divider), message.url);
+      } else {
+        insertAtEdge('tail', message.url);
       }
     }
   });

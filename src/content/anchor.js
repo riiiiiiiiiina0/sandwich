@@ -1,5 +1,5 @@
 // content-script.js
-if (window.name === 'split-page-iframe') {
+if (window.name.startsWith('sb-iframe-')) {
   document.addEventListener(
     'click',
     function (e) {

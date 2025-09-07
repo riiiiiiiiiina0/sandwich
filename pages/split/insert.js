@@ -198,7 +198,7 @@ const closeExistingPicker = () => {
  * @param {string} url
  * @returns {HTMLIFrameElement}
  */
-const insertAtDivider = (divider, url) => {
+export const insertAtDivider = (divider, url) => {
   const iframeContainer = appState.getContainer();
   const isVerticalLayout = appState.getIsVerticalLayout();
 
@@ -236,7 +236,7 @@ const insertAtDivider = (divider, url) => {
     document.createElement('iframe')
   );
   iframe.src = url;
-  iframe.name = 'split-page-iframe';
+  iframe.name = `sb-iframe-${Date.now()}`;
   iframe.setAttribute(
     'sandbox',
     'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
@@ -304,7 +304,7 @@ const insertAtDivider = (divider, url) => {
  * @param {string} url
  * @returns {HTMLIFrameElement}
  */
-const insertAtEdge = (position, url) => {
+export const insertAtEdge = (position, url) => {
   const iframeContainer = appState.getContainer();
   const isVerticalLayout = appState.getIsVerticalLayout();
 
@@ -330,7 +330,7 @@ const insertAtEdge = (position, url) => {
     document.createElement('iframe')
   );
   iframe.src = url;
-  iframe.name = 'split-page-iframe';
+  iframe.name = `sb-iframe-${Date.now()}`;
   iframe.setAttribute(
     'sandbox',
     'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
