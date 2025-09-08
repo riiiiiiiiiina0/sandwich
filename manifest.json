@@ -50,5 +50,17 @@
       "all_frames": true,
       "match_about_blank": true
     }
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "pages/split.html",
+        "pages/libs/*",
+        "pages/split/*"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
   ]
 }
