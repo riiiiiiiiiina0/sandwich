@@ -1,5 +1,32 @@
 // Background script to remove headers that prevent iframe loading
 
+const injectWindowSpoofing = async (tabId, frameId) => {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId, frameIds: [frameId] },
+      world: 'MAIN',
+      injectImmediately: true,
+      func: () => {
+        try {
+          const originalStop = window.stop;
+          const originalWrite = document.write;
+          window.stop = () => {
+            console.log(`🐻‍❄️ [window.stop]`);
+          };
+          document.write = (content) => {
+            console.log(`🐻‍❄️ [document.write]: "${content}"`);
+            if (content === '') return;
+            originalWrite(content);
+          };
+          console.log('window-spoofing loaded');
+        } catch (_e) {}
+      },
+    });
+  } catch (e) {
+    // Best-effort; ignore failures (e.g., chrome:// pages)
+  }
+};
+
 const CONTEXT_MENU_ID_SPLIT = 'open-in-split-view';
 const CONTEXT_MENU_ID_RIGHT = 'open-on-the-right';
 
@@ -75,6 +102,25 @@ chrome.runtime.onStartup.addListener(() => {
   );
 });
 
+// Inject spoofing as early as possible on new documents
+chrome.webNavigation.onCommitted.addListener(
+  (details) => {
+    if (details.frameId >= 0) {
+      injectWindowSpoofing(details.tabId, details.frameId);
+    }
+  },
+  { url: [{ schemes: ['http', 'https'] }] },
+);
+
+chrome.webNavigation.onBeforeNavigate.addListener(
+  (details) => {
+    if (details.frameId >= 0) {
+      injectWindowSpoofing(details.tabId, details.frameId);
+    }
+  },
+  { url: [{ schemes: ['http', 'https'] }] },
+);
+
 const updateContextMenuVisibility = async (tab) => {
   const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
   const isSplitPage = tab && tab.url && tab.url.startsWith(splitBaseUrl);
@@ -116,19 +162,29 @@ chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
 
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (info.menuItemId === CONTEXT_MENU_ID_SPLIT) {
+    if (!tab || typeof tab.url !== 'string') return;
     const currentUrl = tab.url;
-    const linkUrl = info.linkUrl;
+    const linkUrl = info.linkUrl ?? '';
     const splitUrl = `${chrome.runtime.getURL(
       'pages/split.html',
     )}?urls=${encodeURIComponent(currentUrl)},${encodeURIComponent(linkUrl)}`;
-    await chrome.tabs.create({ url: splitUrl, index: tab.index + 1 });
-    await chrome.tabs.remove(tab.id);
+    const createOpts = { url: splitUrl };
+    if (typeof tab.index === 'number') {
+      // place new tab to the right if we know the index
+      createOpts.index = tab.index + 1;
+    }
+    await chrome.tabs.create(createOpts);
+    if (typeof tab.id === 'number') {
+      await chrome.tabs.remove(tab.id);
+    }
   } else if (info.menuItemId === CONTEXT_MENU_ID_RIGHT) {
-    chrome.tabs.sendMessage(tab.id, {
-      action: 'add-iframe-right',
-      url: info.linkUrl,
-      frameId: info.frameId,
-    });
+    if (tab && typeof tab.id === 'number') {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'add-iframe-right',
+        url: info.linkUrl,
+        frameId: info.frameId,
+      });
+    }
   }
 });
 
@@ -250,15 +306,19 @@ chrome.action.onClicked.addListener(async (currentTab) => {
               typeof currentTab.groupId === 'number' &&
               currentTab.groupId > -1
             ) {
-              await chrome.tabs.group({
-                groupId: currentTab.groupId,
-                tabIds: /** @type {number[]} */ (newTabIds),
-              });
+              for (const id of newTabIds) {
+                await chrome.tabs.group({
+                  groupId: currentTab.groupId,
+                  tabIds: id,
+                });
+              }
             }
             // Move the tabs to the desired position.
-            await chrome.tabs.move(/** @type {number[]} */ (newTabIds), {
-              index: baseIndex,
-            });
+            if (newTabIds.length === 1) {
+              await chrome.tabs.move(newTabIds[0], { index: baseIndex });
+            } else {
+              await chrome.tabs.move(newTabIds, { index: baseIndex });
+            }
           }
         }
       } catch (unsplitErr) {
