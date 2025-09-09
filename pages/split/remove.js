@@ -3,6 +3,7 @@ import { rebuildInterface } from './rebuild.js';
 import { updateDividerPlusVisibility } from './insert.js';
 import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 import { updateDocumentTitleFromIframes } from './title.js';
+import { setLayoutToHorizontal } from './layout.js';
 
 const closeTabIfSingleRemaining = () => {
   const remainingWrappers = document.querySelectorAll('.iframe-wrapper');
@@ -98,6 +99,18 @@ export const removeIframe = (index) => {
     }
 
     const remainingWrappers = document.querySelectorAll('.iframe-wrapper');
+
+    // If we were in grid and now have 3 wrappers, switch to horizontal layout
+    if (
+      typeof appState.getLayoutMode === 'function' &&
+      appState.getLayoutMode() === 'grid' &&
+      remainingWrappers.length === 3
+    ) {
+      setLayoutToHorizontal();
+      updateDividerPlusVisibility();
+      return;
+    }
+
     const newRatio = 100 / remainingWrappers.length;
     remainingWrappers.forEach((wrapper) => {
       /** @type {HTMLElement} */ (wrapper).dataset.ratio = String(newRatio);

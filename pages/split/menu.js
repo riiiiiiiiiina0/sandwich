@@ -1,11 +1,18 @@
 import { appState } from './state.js';
 import { heroicons } from './heroicons.js';
-import { toggleLayout } from './layout.js';
+import {
+  toggleLayout,
+  setLayoutToGrid,
+  setLayoutToHorizontal,
+  setLayoutToVertical,
+} from './layout.js';
 import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 
 export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
-  const isVerticalLayout = appState.getIsVerticalLayout();
+  const mode = appState.getLayoutMode();
+  const isVerticalLayout = mode === 'vertical';
+  const isGridLayout = mode === 'grid';
 
   const menu = document.createElement('div');
   menu.className =
@@ -25,15 +32,51 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
     return svg || container;
   };
 
-  const layoutBtn = document.createElement('button');
-  layoutBtn.className =
-    'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
-  layoutBtn.dataset.role = 'layout';
-  // Show the action icon (what it will switch to)
-  layoutBtn.appendChild(createHeroicon(isVerticalLayout ? 'columns' : 'rows'));
-  layoutBtn.title = isVerticalLayout ? 'Horizontal layout' : 'Vertical layout';
-  layoutBtn.addEventListener('click', toggleLayout);
-  menu.appendChild(layoutBtn);
+  if (isGridLayout) {
+    // In grid, show explicit Horizontal and Vertical buttons
+    const toHorizontalBtn = document.createElement('button');
+    toHorizontalBtn.className =
+      'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+    toHorizontalBtn.dataset.role = 'to-horizontal';
+    toHorizontalBtn.appendChild(createHeroicon('columns'));
+    toHorizontalBtn.title = 'Horizontal layout';
+    toHorizontalBtn.addEventListener('click', setLayoutToHorizontal);
+    menu.appendChild(toHorizontalBtn);
+
+    const toVerticalBtn = document.createElement('button');
+    toVerticalBtn.className =
+      'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+    toVerticalBtn.dataset.role = 'to-vertical';
+    toVerticalBtn.appendChild(createHeroicon('rows'));
+    toVerticalBtn.title = 'Vertical layout';
+    toVerticalBtn.addEventListener('click', setLayoutToVertical);
+    menu.appendChild(toVerticalBtn);
+  } else {
+    // In linear layouts, show a Grid switcher plus the existing toggle
+    if (totalCount === 4) {
+      const gridBtn = document.createElement('button');
+      gridBtn.className =
+        'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+      gridBtn.dataset.role = 'grid';
+      gridBtn.appendChild(createHeroicon('grid'));
+      gridBtn.title = 'Grid layout';
+      gridBtn.addEventListener('click', setLayoutToGrid);
+      menu.appendChild(gridBtn);
+    }
+
+    const layoutBtn = document.createElement('button');
+    layoutBtn.className =
+      'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+    layoutBtn.dataset.role = 'layout';
+    layoutBtn.appendChild(
+      createHeroicon(isVerticalLayout ? 'columns' : 'rows'),
+    );
+    layoutBtn.title = isVerticalLayout
+      ? 'Horizontal layout'
+      : 'Vertical layout';
+    layoutBtn.addEventListener('click', toggleLayout);
+    menu.appendChild(layoutBtn);
+  }
 
   const reloadBtn = document.createElement('button');
   reloadBtn.className =
@@ -97,7 +140,7 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
     const moveLeftIcon = /** @type {SVGElement} */ (createHeroicon('moveLeft'));
     const baseRotation =
       (heroicons.moveLeft && heroicons.moveLeft.rotation) ?? 0;
-    const extraRotation = isVerticalLayout ? -90 : 0;
+    const extraRotation = isVerticalLayout ? 90 : 0;
     moveLeftIcon.style.transform = `rotate(${baseRotation + extraRotation}deg)`;
     moveLeftBtn.appendChild(moveLeftIcon);
     moveLeftBtn.title = isVerticalLayout ? 'Move up' : 'Move left';

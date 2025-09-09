@@ -6,6 +6,8 @@ import {
   attachIframeTitleListener,
   updateDocumentTitleFromIframes,
 } from './title.js';
+import { setLayoutToGrid } from './layout.js';
+import { updateUrlWithState } from './url.js';
 
 /**
  * Attach a hover-visible plus button to a divider that opens a tab picker.
@@ -279,23 +281,31 @@ export const insertAtDivider = (divider, url) => {
   addDividerDragFunctionality(newDivider);
   attachDividerPlus(newDivider);
 
-  // Rebalance sizes equally across all wrappers as ratios and recalc CSS sizes
+  // Rebalance sizes or switch to grid if reaching 4 wrappers
   const allWrappers = /** @type {NodeListOf<HTMLDivElement>} */ (
     iframeContainer.querySelectorAll('.iframe-wrapper')
   );
-  const newRatio = 100 / allWrappers.length;
-  allWrappers.forEach((w) => {
-    /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
-    applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
-  });
+  if (allWrappers.length === 4) {
+    setLayoutToGrid();
+    updateDividerPlusVisibility();
+    updateDocumentTitleFromIframes();
+    updateUrlWithState();
+    return iframe;
+  } else {
+    const newRatio = 100 / allWrappers.length;
+    allWrappers.forEach((w) => {
+      /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
+      applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
+    });
 
-  // Recreate menus and normalize order/url
-  rebuildInterface();
-  updateDividerPlusVisibility();
-  // Ensure final calc sizes consider the new divider count
-  recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
-  updateDocumentTitleFromIframes();
-  return iframe;
+    // Recreate menus and normalize order/url
+    rebuildInterface();
+    updateDividerPlusVisibility();
+    // Ensure final calc sizes consider the new divider count
+    recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
+    updateDocumentTitleFromIframes();
+    return iframe;
+  }
 };
 
 /**
@@ -392,21 +402,29 @@ export const insertAtEdge = (position, url) => {
     divider.insertAdjacentElement('afterend', newWrapper);
   }
 
-  // Rebalance sizes equally across all wrappers
+  // Rebalance sizes or switch to grid if reaching 4 wrappers
   const allWrappers = /** @type {NodeListOf<HTMLDivElement>} */ (
     iframeContainer.querySelectorAll('.iframe-wrapper')
   );
-  const newRatio = 100 / allWrappers.length;
-  allWrappers.forEach((w) => {
-    /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
-    applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
-  });
+  if (allWrappers.length === 4) {
+    setLayoutToGrid();
+    updateDividerPlusVisibility();
+    updateDocumentTitleFromIframes();
+    updateUrlWithState();
+    return iframe;
+  } else {
+    const newRatio = 100 / allWrappers.length;
+    allWrappers.forEach((w) => {
+      /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
+      applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
+    });
 
-  rebuildInterface();
-  updateDividerPlusVisibility();
-  recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
-  updateDocumentTitleFromIframes();
-  return iframe;
+    rebuildInterface();
+    updateDividerPlusVisibility();
+    recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
+    updateDocumentTitleFromIframes();
+    return iframe;
+  }
 };
 
 /**

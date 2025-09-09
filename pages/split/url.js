@@ -2,8 +2,7 @@ import { appState } from './state.js';
 import { getWrapperRatioPercent } from './size.js';
 
 export const updateUrlWithState = () => {
-  const iframeContainer = appState.getContainer();
-  const isVerticalLayout = appState.getIsVerticalLayout();
+  const mode = appState.getLayoutMode();
 
   const wrappers = /** @type {HTMLDivElement[]} */ (
     Array.from(document.querySelectorAll('.iframe-wrapper'))
@@ -42,9 +41,6 @@ export const updateUrlWithState = () => {
     currentUrls.map((u) => encodeURIComponent(u)).join(','),
   );
   newUrl.searchParams.set('ratios', currentRatios.join(','));
-  newUrl.searchParams.set(
-    'layout',
-    isVerticalLayout ? 'vertical' : 'horizontal',
-  );
+  newUrl.searchParams.set('layout', mode);
   window.history.replaceState({}, '', newUrl.toString());
 };

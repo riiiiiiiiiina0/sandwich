@@ -1,5 +1,5 @@
 import { appState } from './state.js';
-import { applyLayout } from './layout.js';
+import { applyLayout, ensureLinearDividers } from './layout.js';
 import { createIframeMenu } from './menu.js';
 import { addDividerDragFunctionality } from './drag.js';
 import {
@@ -46,7 +46,9 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const sourceWrapper = sourceIframe.closest('.iframe-wrapper');
+      const sourceWrapper = /** @type {HTMLDivElement} */ (
+        sourceIframe.closest('.iframe-wrapper')
+      );
       if (!sourceWrapper) {
         // Fallback if wrapper not found
         insertAtEdge('tail', message.url);
@@ -58,7 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const dividers = document.querySelectorAll('.iframe-divider');
       const divider = Array.from(dividers).find(
-        (d) => parseInt(d.style.order, 10) === dividerOrder,
+        (d) =>
+          parseInt(/** @type {HTMLElement} */ (d).style.order, 10) ===
+          dividerOrder,
       );
 
       if (divider) {
@@ -79,7 +83,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const ratiosParam = urlParams.get('ratios');
   const layoutParam = urlParams.get('layout');
 
-  appState.setVerticalLayout(layoutParam === 'vertical');
+  // Accept 'horizontal' | 'vertical' | 'grid' for layout; fallback to old boolean param
+  if (
+    layoutParam === 'horizontal' ||
+    layoutParam === 'vertical' ||
+    layoutParam === 'grid'
+  ) {
+    appState.setLayoutMode(layoutParam);
+  } else {
+    appState.setVerticalLayout(layoutParam === 'vertical');
+  }
 
   if (!urlsParam) return;
 
@@ -101,6 +114,11 @@ document.addEventListener('DOMContentLoaded', () => {
     ratios = Array(numIframes).fill(100 / numIframes);
   }
 
+  // If exactly four urls and no explicit layout specified, default to grid
+  if (!layoutParam && urls && urls.length === 4) {
+    appState.setLayoutMode('grid');
+  }
+
   applyLayout();
   attachEdgePlusButtons();
 
@@ -111,15 +129,22 @@ document.addEventListener('DOMContentLoaded', () => {
     iframeWrapper.className =
       'iframe-wrapper group relative flex-shrink-0 flex-grow-0';
     /** @type {HTMLElement} */ (iframeWrapper).style.order = String(index * 2);
-    /** @type {HTMLElement} */ (iframeWrapper).dataset.ratio = String(
-      ratios[index],
-    );
-    applyWrapperPrimarySize(
-      iframeWrapper,
-      ratios[index],
-      isVerticalLayout,
-      iframeContainer,
-    );
+    if (appState.getLayoutMode() !== 'grid') {
+      /** @type {HTMLElement} */ (iframeWrapper).dataset.ratio = String(
+        ratios[index],
+      );
+      applyWrapperPrimarySize(
+        iframeWrapper,
+        ratios[index],
+        isVerticalLayout,
+        iframeContainer,
+      );
+    } else {
+      // In grid, do not assign linear ratios or inline sizes
+      /** @type {HTMLElement} */ (iframeWrapper).dataset.ratio = '';
+      iframeWrapper.style.width = '';
+      iframeWrapper.style.height = '';
+    }
 
     const iframe = /** @type {HTMLIFrameElement} */ (
       document.createElement('iframe')
@@ -130,10 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
       'sandbox',
       'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
     );
-    iframe.setAttribute(
-      'allow',
-      'fullscreen; clipboard-read; clipboard-write',
-    );
+    iframe.setAttribute('allow', 'fullscreen; clipboard-read; clipboard-write');
     if (isVerticalLayout) {
       iframe.style.height = '100%';
       iframe.style.width = '100%';
@@ -154,7 +176,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     iframeContainer.appendChild(iframeWrapper);
 
-    if (index < urls.length - 1) {
+    if (appState.getLayoutMode() !== 'grid' && index < urls.length - 1) {
       const divider = document.createElement('div');
       divider.className =
         'iframe-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300';
@@ -173,8 +195,10 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   // After initial creation, ensure plus visibility matches count
   updateDividerPlusVisibility();
-  // Recalculate all wrapper sizes once with final divider count
-  recalcAllWrapperSizes(iframeContainer, appState.getIsVerticalLayout());
+  // Recalculate sizes for linear layouts; in grid let CSS grid handle equal sizing
+  if (appState.getLayoutMode() !== 'grid') {
+    recalcAllWrapperSizes(iframeContainer, appState.getIsVerticalLayout());
+  }
   // Initialize document title from iframes
   updateDocumentTitleFromIframes();
 });
