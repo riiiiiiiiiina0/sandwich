@@ -107,7 +107,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ratios = Array(numIframes).fill(100 / numIframes);
   }
 
-  applyLayout();
   attachEdgePlusButtons();
 
   urls.forEach((url, index) => {
@@ -185,8 +184,8 @@ document.addEventListener('DOMContentLoaded', () => {
   });
   // After initial creation, ensure plus visibility matches count
   updateDividerPlusVisibility();
-  // Recalculate all wrapper sizes once with final divider count
-  recalcAllWrapperSizes(iframeContainer, appState.getIsVerticalLayout());
+  // Apply layout now that iframes are in the DOM
+  applyLayout();
   // Initialize document title from iframes
   updateDocumentTitleFromIframes();
 });
