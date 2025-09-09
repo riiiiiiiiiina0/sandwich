@@ -153,3 +153,79 @@ export const addDividerDragFunctionality = (divider) => {
     document.addEventListener('mouseleave', handleMouseUp);
   });
 };
+
+/**
+ * Add drag behavior for grid dividers (one vertical, one horizontal) that
+ * adjust the 2x2 grid split percentages in state and live styles.
+ * @param {HTMLDivElement} divider
+ * @param {'vertical'|'horizontal'} orientation
+ */
+export const addGridDividerDragFunctionality = (divider, orientation) => {
+  const iframeContainer = appState.getContainer();
+
+  let isDragging = false;
+  const onMouseMove = (e) => {
+    if (!isDragging) return;
+    e.preventDefault();
+    const rect = iframeContainer.getBoundingClientRect();
+    if (orientation === 'vertical') {
+      const x = Math.max(rect.left, Math.min(rect.right, e.clientX));
+      const percent = ((x - rect.left) / Math.max(1, rect.width)) * 100;
+      appState.setGridColumnPercent(percent);
+    } else {
+      const y = Math.max(rect.top, Math.min(rect.bottom, e.clientY));
+      const percent = ((y - rect.top) / Math.max(1, rect.height)) * 100;
+      appState.setGridRowPercent(percent);
+    }
+    // Apply live styles without reflowing menus etc.
+    const col = appState.getGridColumnPercent();
+    const row = appState.getGridRowPercent();
+    iframeContainer.style.gridTemplateColumns = `${col}% ${100 - col}%`;
+    iframeContainer.style.gridTemplateRows = `${row}% ${100 - row}%`;
+    const v = /** @type {HTMLDivElement|null} */ (
+      iframeContainer.querySelector('[data-sb-grid-divider="vertical"]')
+    );
+    const h = /** @type {HTMLDivElement|null} */ (
+      iframeContainer.querySelector('[data-sb-grid-divider="horizontal"]')
+    );
+    if (v) v.style.left = `calc(${col}% - 2px)`;
+    if (h) h.style.top = `calc(${row}% - 2px)`;
+  };
+
+  const onMouseUp = () => {
+    if (!isDragging) return;
+    isDragging = false;
+    document.body.style.userSelect = '';
+    document.body.style.cursor = '';
+    const iframes = /** @type {NodeListOf<HTMLIFrameElement>} */ (
+      document.querySelectorAll('.resizable-iframe')
+    );
+    iframes.forEach((iframe) => {
+      iframe.style.pointerEvents = 'auto';
+    });
+    updateUrlWithState();
+    document.removeEventListener('mousemove', onMouseMove);
+    document.removeEventListener('mouseup', onMouseUp);
+    document.removeEventListener('mouseleave', onMouseUp);
+  };
+
+  divider.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    isDragging = true;
+    document.body.style.userSelect = 'none';
+    document.body.style.cursor =
+      orientation === 'vertical' ? 'col-resize' : 'row-resize';
+    const iframes = /** @type {NodeListOf<HTMLIFrameElement>} */ (
+      document.querySelectorAll('.resizable-iframe')
+    );
+    iframes.forEach((iframe) => {
+      iframe.style.pointerEvents = 'none';
+    });
+    if ('setCapture' in divider && typeof divider.setCapture === 'function') {
+      divider.setCapture();
+    }
+    document.addEventListener('mousemove', onMouseMove, { passive: false });
+    document.addEventListener('mouseup', onMouseUp);
+    document.addEventListener('mouseleave', onMouseUp);
+  });
+};
