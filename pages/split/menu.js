@@ -16,7 +16,7 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
 
   const menu = document.createElement('div');
   menu.className =
-    'iframe-menu absolute -top-[1px] left-[50%] -translate-x-1/2 bg-white/50 backdrop-blur-md rounded-b-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 flex gap-[2px] p-[2px] pointer-events-auto';
+    'iframe-menu absolute -top-[1px] left-[50%] -translate-x-1/2 bg-white/50 dark:bg-gray-700/50 dark:text-white backdrop-blur-md rounded-b-lg shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10 flex gap-[2px] p-[2px] pointer-events-auto';
 
   /**
    * @param {keyof typeof heroicons} name
