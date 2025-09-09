@@ -70,6 +70,31 @@ export const addDividerDragFunctionality = (divider) => {
           !isVerticalDrag,
           container,
         );
+
+        if (!isVerticalDrag && getLayoutMode() === 'grid') {
+          const otherDividers = document.querySelectorAll(
+            '.grid-horizontal-divider',
+          );
+          otherDividers.forEach((otherDivider) => {
+            if (otherDivider !== divider) {
+              const otherContainer = otherDivider.parentElement;
+              const otherLeftWrapper = otherDivider.previousElementSibling;
+              const otherRightWrapper = otherDivider.nextElementSibling;
+              applyWrapperPrimarySize(
+                otherLeftWrapper,
+                clampedLeftSize,
+                true,
+                otherContainer,
+              );
+              applyWrapperPrimarySize(
+                otherRightWrapper,
+                clampedRightSize,
+                true,
+                otherContainer,
+              );
+            }
+          });
+        }
       }
     }
   };

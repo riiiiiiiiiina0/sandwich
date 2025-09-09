@@ -174,7 +174,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const horizontalDivider1 = document.createElement('div');
     horizontalDivider1.className =
-      'iframe-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+      'iframe-divider grid-horizontal-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
     column1.appendChild(horizontalDivider1);
     addDividerDragFunctionality(horizontalDivider1);
 
@@ -198,7 +198,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const horizontalDivider2 = document.createElement('div');
     horizontalDivider2.className =
-      'iframe-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+      'iframe-divider grid-horizontal-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-.0';
     column2.appendChild(horizontalDivider2);
     addDividerDragFunctionality(horizontalDivider2);
 
