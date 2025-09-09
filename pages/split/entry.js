@@ -189,7 +189,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (appState.getLayoutMode() !== 'grid' && index < urls.length - 1) {
       const divider = document.createElement('div');
       divider.className =
-        'iframe-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300';
+        'iframe-divider group relative bg-gray-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300';
       if (isVerticalLayout) {
         divider.className +=
           ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';

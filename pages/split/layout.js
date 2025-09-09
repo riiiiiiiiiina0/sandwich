@@ -106,7 +106,7 @@ export const applyLayout = () => {
     const vDivider = document.createElement('div');
     vDivider.dataset.sbGridDivider = 'vertical';
     vDivider.className =
-      'absolute top-0 bottom-0 w-1 cursor-col-resize bg-base-300/70 hover:bg-blue-400 z-20';
+      'absolute top-0 bottom-0 w-1 cursor-col-resize bg-gray-300/70 dark:bg-gray-600/70 hover:bg-blue-400 z-20';
     vDivider.style.position = 'absolute';
     vDivider.style.left = `calc(${appState.getGridColumnPercent()}% - 2px)`;
     vDivider.style.top = '0';
@@ -117,7 +117,7 @@ export const applyLayout = () => {
     const hDivider = document.createElement('div');
     hDivider.dataset.sbGridDivider = 'horizontal';
     hDivider.className =
-      'absolute left-0 right-0 h-1 cursor-row-resize bg-base-300/70 hover:bg-blue-400 z-20';
+      'absolute left-0 right-0 h-1 cursor-row-resize bg-gray-300/70 dark:bg-gray-600/70 hover:bg-blue-400 z-20';
     hDivider.style.position = 'absolute';
     hDivider.style.top = `calc(${appState.getGridRowPercent()}% - 2px)`;
     hDivider.style.left = '0';
@@ -267,25 +267,25 @@ export const updateButtonLabels = () => {
       }
 
       if (toHorizontalBtn) {
-        toHorizontalBtn.innerHTML = heroicons.rows.svg;
+        toHorizontalBtn.innerHTML = heroicons.columns.svg;
         const svg = /** @type {SVGElement|null} */ (
           toHorizontalBtn.querySelector('svg')
         );
         if (svg) {
-          const baseRotation = (heroicons.rows && heroicons.rows.rotation) ?? 0;
+          const baseRotation =
+            (heroicons.columns && heroicons.columns.rotation) ?? 0;
           svg.style.transform = `rotate(${baseRotation}deg)`;
         }
         toHorizontalBtn.title = 'Horizontal layout';
       }
 
       if (toVerticalBtn) {
-        toVerticalBtn.innerHTML = heroicons.columns.svg;
+        toVerticalBtn.innerHTML = heroicons.rows.svg;
         const svg = /** @type {SVGElement|null} */ (
           toVerticalBtn.querySelector('svg')
         );
         if (svg) {
-          const baseRotation =
-            (heroicons.columns && heroicons.columns.rotation) ?? 0;
+          const baseRotation = (heroicons.rows && heroicons.rows.rotation) ?? 0;
           svg.style.transform = `rotate(${baseRotation}deg)`;
         }
         toVerticalBtn.title = 'Vertical layout';

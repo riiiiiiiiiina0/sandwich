@@ -24,12 +24,12 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
   const createHeroicon = (name) => {
     const container = document.createElement('span');
     container.innerHTML = heroicons[name].svg;
-    const svg = /** @type {SVGElement|null} */ (container.firstElementChild);
+    const svg = /** @type {SVGElement} */ (container.firstElementChild);
     if (svg) {
       const baseRotation = (heroicons[name] && heroicons[name].rotation) ?? 0;
       svg.style.transform = `rotate(${baseRotation}deg)`;
     }
-    return svg || container;
+    return svg;
   };
 
   if (isGridLayout) {
@@ -38,6 +38,7 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
     toHorizontalBtn.className =
       'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
     toHorizontalBtn.dataset.role = 'to-horizontal';
+    // Icon should depict columns to indicate horizontal split
     toHorizontalBtn.appendChild(createHeroicon('columns'));
     toHorizontalBtn.title = 'Horizontal layout';
     toHorizontalBtn.addEventListener('click', setLayoutToHorizontal);
@@ -47,6 +48,7 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
     toVerticalBtn.className =
       'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
     toVerticalBtn.dataset.role = 'to-vertical';
+    // Icon should depict rows to indicate vertical split
     toVerticalBtn.appendChild(createHeroicon('rows'));
     toVerticalBtn.title = 'Vertical layout';
     toVerticalBtn.addEventListener('click', setLayoutToVertical);
