@@ -2,7 +2,8 @@
 
 export const appState = {
   iframeContainer: /** @type {HTMLDivElement | null} */ (null),
-  isVerticalLayout: false,
+  layout: /** @type {'horizontal' | 'vertical' | 'grid'} */ ('horizontal'),
+  preLayout: /** @type {'horizontal' | 'vertical' | 'grid' | null} */ (null),
   setContainer(el) {
     this.iframeContainer = el;
   },
@@ -11,13 +12,17 @@ export const appState = {
       throw new Error('iframeContainer not initialized');
     return this.iframeContainer;
   },
-  setVerticalLayout(isVertical) {
-    this.isVerticalLayout = Boolean(isVertical);
+  setLayout(layout) {
+    this.preLayout = this.layout;
+    this.layout = layout;
+  },
+  getLayout() {
+    return this.layout;
+  },
+  getPreLayout() {
+    return this.preLayout;
   },
   getIsVerticalLayout() {
-    return this.isVerticalLayout;
-  },
-  toggleVerticalLayout() {
-    this.isVerticalLayout = !this.isVerticalLayout;
+    return this.layout === 'vertical';
   },
 };

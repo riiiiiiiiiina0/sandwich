@@ -8,6 +8,7 @@ export const moveIframe = (fromIndex, direction) => {
   const wrappers = /** @type {HTMLDivElement[]} */ (
     Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
   );
+  const layout = appState.getLayout();
 
   const wrappersSorted = wrappers
     .map((w, domIndex) => ({
@@ -20,29 +21,47 @@ export const moveIframe = (fromIndex, direction) => {
     .sort((a, b) => a.orderValue - b.orderValue)
     .map((x) => x.el);
 
-  const toIndex = fromIndex + direction;
-  if (
-    toIndex < 0 ||
-    toIndex >= wrappersSorted.length ||
-    toIndex === fromIndex
-  ) {
-    return;
+  if (layout === 'grid') {
+    const toIndex = (fromIndex + direction + wrappersSorted.length) % wrappersSorted.length;
+    const fromWrapper = wrappersSorted[fromIndex];
+    const toWrapper = wrappersSorted[toIndex];
+
+    const fromOrder = Number.parseInt(
+      /** @type {HTMLElement} */ (fromWrapper).style.order || `${fromIndex * 2}`,
+      10,
+    );
+    const toOrder = Number.parseInt(
+      /** @type {HTMLElement} */ (toWrapper).style.order || `${toIndex * 2}`,
+      10,
+    );
+
+    /** @type {HTMLElement} */ (fromWrapper).style.order = String(toOrder);
+    /** @type {HTMLElement} */ (toWrapper).style.order = String(fromOrder);
+  } else {
+    const toIndex = fromIndex + direction;
+    if (
+      toIndex < 0 ||
+      toIndex >= wrappersSorted.length ||
+      toIndex === fromIndex
+    ) {
+      return;
+    }
+
+    const fromWrapper = wrappersSorted[fromIndex];
+    const toWrapper = wrappersSorted[toIndex];
+
+    const fromOrder = Number.parseInt(
+      /** @type {HTMLElement} */ (fromWrapper).style.order || `${fromIndex * 2}`,
+      10,
+    );
+    const toOrder = Number.parseInt(
+      /** @type {HTMLElement} */ (toWrapper).style.order || `${toIndex * 2}`,
+      10,
+    );
+
+    /** @type {HTMLElement} */ (fromWrapper).style.order = String(toOrder);
+    /** @type {HTMLElement} */ (toWrapper).style.order = String(fromOrder);
   }
-
-  const fromWrapper = wrappersSorted[fromIndex];
-  const toWrapper = wrappersSorted[toIndex];
-
-  const fromOrder = Number.parseInt(
-    /** @type {HTMLElement} */ (fromWrapper).style.order || `${fromIndex * 2}`,
-    10,
-  );
-  const toOrder = Number.parseInt(
-    /** @type {HTMLElement} */ (toWrapper).style.order || `${toIndex * 2}`,
-    10,
-  );
-
-  /** @type {HTMLElement} */ (fromWrapper).style.order = String(toOrder);
-  /** @type {HTMLElement} */ (toWrapper).style.order = String(fromOrder);
 
   updateCssOrder();
   rebuildInterface();

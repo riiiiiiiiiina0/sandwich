@@ -79,12 +79,18 @@ document.addEventListener('DOMContentLoaded', () => {
   const ratiosParam = urlParams.get('ratios');
   const layoutParam = urlParams.get('layout');
 
-  appState.setVerticalLayout(layoutParam === 'vertical');
-
   if (!urlsParam) return;
 
   const urls = urlsParam.split(',').map((url) => decodeURIComponent(url));
   const numIframes = urls.length;
+
+  if (layoutParam === 'grid' || layoutParam === 'vertical') {
+    appState.setLayout(layoutParam);
+  } else if (numIframes === 4 && !layoutParam) {
+    appState.setLayout('grid');
+  } else {
+    appState.setLayout('horizontal');
+  }
 
   let ratios;
   if (ratiosParam) {
@@ -105,7 +111,8 @@ document.addEventListener('DOMContentLoaded', () => {
   attachEdgePlusButtons();
 
   urls.forEach((url, index) => {
-    const isVerticalLayout = appState.getIsVerticalLayout();
+    const layout = appState.getLayout();
+    const isVerticalLayout = layout === 'vertical';
 
     const iframeWrapper = document.createElement('div');
     iframeWrapper.className =
@@ -134,7 +141,12 @@ document.addEventListener('DOMContentLoaded', () => {
       'allow',
       'fullscreen; clipboard-read; clipboard-write',
     );
-    if (isVerticalLayout) {
+    if (layout === 'grid') {
+      iframe.style.width = '100%';
+      iframe.style.height = '100%';
+      iframe.className =
+        'resizable-iframe h-full w-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
+    } else if (isVerticalLayout) {
       iframe.style.height = '100%';
       iframe.style.width = '100%';
       iframe.className =

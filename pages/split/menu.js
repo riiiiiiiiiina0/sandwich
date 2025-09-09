@@ -1,11 +1,13 @@
 import { appState } from './state.js';
 import { heroicons } from './heroicons.js';
-import { toggleLayout } from './layout.js';
 import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 
+import { applyLayout, updateButtonLabels } from './layout.js';
+
 export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
-  const isVerticalLayout = appState.getIsVerticalLayout();
+  const layout = appState.getLayout();
+  const isVerticalLayout = layout === 'vertical';
 
   const menu = document.createElement('div');
   menu.className =
@@ -25,15 +27,72 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
     return svg || container;
   };
 
-  const layoutBtn = document.createElement('button');
-  layoutBtn.className =
-    'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
-  layoutBtn.dataset.role = 'layout';
-  // Show the action icon (what it will switch to)
-  layoutBtn.appendChild(createHeroicon(isVerticalLayout ? 'columns' : 'rows'));
-  layoutBtn.title = isVerticalLayout ? 'Horizontal layout' : 'Vertical layout';
-  layoutBtn.addEventListener('click', toggleLayout);
-  menu.appendChild(layoutBtn);
+  if (layout === 'grid') {
+    const details = document.createElement('details');
+    details.className = 'dropdown';
+    const summary = document.createElement('summary');
+    summary.className =
+      'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+    summary.appendChild(createHeroicon('columns'));
+    details.appendChild(summary);
+    const ul = document.createElement('ul');
+    ul.className =
+      'p-2 shadow menu dropdown-content z-[1] bg-base-100 rounded-box w-32';
+    const horizontalLi = document.createElement('li');
+    const horizontalA = document.createElement('a');
+    horizontalA.textContent = 'Horizontal';
+    horizontalA.addEventListener('click', () => {
+      appState.setLayout('horizontal');
+      applyLayout();
+      updateButtonLabels();
+    });
+    horizontalLi.appendChild(horizontalA);
+    ul.appendChild(horizontalLi);
+    const verticalLi = document.createElement('li');
+    const verticalA = document.createElement('a');
+    verticalA.textContent = 'Vertical';
+    verticalA.addEventListener('click', () => {
+      appState.setLayout('vertical');
+      applyLayout();
+      updateButtonLabels();
+    });
+    verticalLi.appendChild(verticalA);
+    ul.appendChild(verticalLi);
+    details.appendChild(ul);
+    menu.appendChild(details);
+  } else {
+    const layoutBtn = document.createElement('button');
+    layoutBtn.className =
+      'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+    layoutBtn.dataset.role = 'layout';
+    // Show the action icon (what it will switch to)
+    const iconName = layout === 'horizontal' ? 'rows' : 'grid';
+    layoutBtn.appendChild(createHeroicon(iconName));
+    layoutBtn.title =
+      layout === 'horizontal' ? 'Vertical layout' : 'Grid layout';
+    layoutBtn.addEventListener('click', () => {
+      const nextLayout = layout === 'horizontal' ? 'vertical' : 'grid';
+      appState.setLayout(nextLayout);
+      applyLayout();
+      updateButtonLabels();
+    });
+    menu.appendChild(layoutBtn);
+  }
+
+  if (totalCount === 4 && layout !== 'grid') {
+    const gridBtn = document.createElement('button');
+    gridBtn.className =
+      'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+    gridBtn.dataset.role = 'grid';
+    gridBtn.innerHTML = '4️⃣';
+    gridBtn.title = 'Grid layout';
+    gridBtn.addEventListener('click', () => {
+      appState.setLayout('grid');
+      applyLayout();
+      updateButtonLabels();
+    });
+    menu.appendChild(gridBtn);
+  }
 
   const reloadBtn = document.createElement('button');
   reloadBtn.className =
