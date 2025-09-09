@@ -106,7 +106,7 @@ export const applyLayout = () => {
     const vDivider = document.createElement('div');
     vDivider.dataset.sbGridDivider = 'vertical';
     vDivider.className =
-      'absolute top-0 bottom-0 w-1 cursor-col-resize bg-base-300/70 hover:bg-blue-400 z-20';
+      'absolute top-0 bottom-0 w-1 cursor-col-resize bg-base-300/70 dark:bg-gray-700/70 hover:bg-blue-400 z-20';
     vDivider.style.position = 'absolute';
     vDivider.style.left = `calc(${appState.getGridColumnPercent()}% - 2px)`;
     vDivider.style.top = '0';
@@ -117,7 +117,7 @@ export const applyLayout = () => {
     const hDivider = document.createElement('div');
     hDivider.dataset.sbGridDivider = 'horizontal';
     hDivider.className =
-      'absolute left-0 right-0 h-1 cursor-row-resize bg-base-300/70 hover:bg-blue-400 z-20';
+      'absolute left-0 right-0 h-1 cursor-row-resize bg-base-300/70 dark:bg-gray-700/70 hover:bg-blue-400 z-20';
     hDivider.style.position = 'absolute';
     hDivider.style.top = `calc(${appState.getGridRowPercent()}% - 2px)`;
     hDivider.style.left = '0';
