@@ -5,18 +5,18 @@ export const DIVIDER_THICKNESS_PX = 4;
 
 /**
  * Count the number of dividers in the container.
- * @param {HTMLDivElement} iframeContainer
+ * @param {HTMLElement} container
  */
-export function getDividerCount(iframeContainer) {
-  return iframeContainer.querySelectorAll('.iframe-divider').length;
+export function getDividerCount(container) {
+  return container.querySelectorAll('.iframe-divider').length;
 }
 
 /**
  * Total divider thickness along the primary axis.
- * @param {HTMLDivElement} iframeContainer
+ * @param {HTMLElement} container
  */
-export function getTotalDividerThicknessPx(iframeContainer) {
-  return getDividerCount(iframeContainer) * DIVIDER_THICKNESS_PX;
+export function getTotalDividerThicknessPx(container) {
+  return getDividerCount(container) * DIVIDER_THICKNESS_PX;
 }
 
 /**
@@ -36,21 +36,21 @@ export function getWrapperRatioPercent(wrapper, defaultPercent) {
  * Also persists the ratio on dataset.
  * @param {HTMLDivElement} wrapper
  * @param {number} ratioPercent
- * @param {boolean} isVerticalLayout
- * @param {HTMLDivElement} iframeContainer
+ * @param {boolean} isVertical
+ * @param {HTMLElement} container
  */
 export function applyWrapperPrimarySize(
   wrapper,
   ratioPercent,
-  isVerticalLayout,
-  iframeContainer,
+  isVertical,
+  container,
 ) {
-  const totalDividerPx = getTotalDividerThicknessPx(iframeContainer);
+  const totalDividerPx = getTotalDividerThicknessPx(container);
   const ratioDecimal = Math.max(0, ratioPercent) / 100;
   const sizeExpr = `calc((100% - ${totalDividerPx}px) * ${ratioDecimal})`;
 
   /** @type {HTMLElement} */ (wrapper).dataset.ratio = String(ratioPercent);
-  if (isVerticalLayout) {
+  if (isVertical) {
     wrapper.style.height = sizeExpr;
     wrapper.style.width = '100%';
   } else {
@@ -62,15 +62,15 @@ export function applyWrapperPrimarySize(
 /**
  * Recalculate sizes for all wrappers based on current ratios and divider count.
  * @param {HTMLDivElement} iframeContainer
- * @param {boolean} isVerticalLayout
+ * @param {boolean} isVertical
  */
-export function recalcAllWrapperSizes(iframeContainer, isVerticalLayout) {
+export function recalcAllWrapperSizes(container, isVertical) {
   const wrappers = /** @type {NodeListOf<HTMLDivElement>} */ (
-    iframeContainer.querySelectorAll('.iframe-wrapper')
+    container.querySelectorAll('.iframe-wrapper')
   );
   const defaultPercent = wrappers.length > 0 ? 100 / wrappers.length : 100;
   wrappers.forEach((wrapper) => {
     const ratio = getWrapperRatioPercent(wrapper, defaultPercent);
-    applyWrapperPrimarySize(wrapper, ratio, isVerticalLayout, iframeContainer);
+    applyWrapperPrimarySize(wrapper, ratio, isVertical, container);
   });
 }

@@ -200,7 +200,7 @@ const closeExistingPicker = () => {
  */
 export const insertAtDivider = (divider, url) => {
   const iframeContainer = appState.getContainer();
-  const isVerticalLayout = appState.getIsVerticalLayout();
+  const isVerticalLayout = appState.getLayoutMode() === 'vertical';
 
   // Compute current sorted wrappers and divider order
   const wrappers = /** @type {HTMLDivElement[]} */ (
@@ -293,7 +293,7 @@ export const insertAtDivider = (divider, url) => {
   rebuildInterface();
   updateDividerPlusVisibility();
   // Ensure final calc sizes consider the new divider count
-  recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
+  recalcAllWrapperSizes(iframeContainer, appState.getLayoutMode() === 'vertical');
   updateDocumentTitleFromIframes();
   return iframe;
 };
@@ -306,7 +306,7 @@ export const insertAtDivider = (divider, url) => {
  */
 export const insertAtEdge = (position, url) => {
   const iframeContainer = appState.getContainer();
-  const isVerticalLayout = appState.getIsVerticalLayout();
+  const isVerticalLayout = appState.getLayoutMode() === 'vertical';
 
   const wrappers = /** @type {HTMLDivElement[]} */ (
     Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
@@ -404,7 +404,7 @@ export const insertAtEdge = (position, url) => {
 
   rebuildInterface();
   updateDividerPlusVisibility();
-  recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
+  recalcAllWrapperSizes(iframeContainer, appState.getLayoutMode() === 'vertical');
   updateDocumentTitleFromIframes();
   return iframe;
 };

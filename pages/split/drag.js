@@ -1,10 +1,10 @@
 import { appState } from './state.js';
 import { updateUrlWithState } from './url.js';
-import { recalcAllWrapperSizes } from './size.js';
+import { applyWrapperPrimarySize } from './size.js';
 
 export const addDividerDragFunctionality = (divider) => {
   const iframeContainer = appState.getContainer();
-  const isVerticalLayout = () => appState.getIsVerticalLayout();
+  const getLayoutMode = () => appState.getLayoutMode();
 
   let isDragging = false;
   let startPosition = 0;
@@ -15,19 +15,25 @@ export const addDividerDragFunctionality = (divider) => {
     if (!isDragging || !dragState) return;
     e.preventDefault();
 
-    const currentPosition = isVerticalLayout() ? e.clientY : e.clientX;
+    const {
+      leftWrapper,
+      rightWrapper,
+      leftIndex,
+      rightIndex,
+      isVerticalDrag,
+      container,
+    } = dragState;
+
+    const currentPosition = isVerticalDrag ? e.clientX : e.clientY;
     const delta = currentPosition - startPosition;
-    // Use the content size excluding divider pixels for percent calculation
-    const totalDividerCount =
-      iframeContainer.querySelectorAll('.iframe-divider').length;
-    const dividerPx = totalDividerCount * 4; // keep in sync with size.js
-    const containerSize = isVerticalLayout()
-      ? iframeContainer.clientHeight
-      : iframeContainer.clientWidth;
+
+    const totalDividerCount = container.querySelectorAll('.iframe-divider').length;
+    const dividerPx = totalDividerCount * 4;
+    const containerSize = isVerticalDrag
+      ? container.clientWidth
+      : container.clientHeight;
     const effectiveSize = Math.max(1, containerSize - dividerPx);
     const deltaPercentage = (delta / effectiveSize) * 100;
-
-    const { leftWrapper, rightWrapper, leftIndex, rightIndex } = dragState;
 
     if (leftWrapper && rightWrapper) {
       const newLeftSize = startSizes[leftIndex] + deltaPercentage;
@@ -52,12 +58,18 @@ export const addDividerDragFunctionality = (divider) => {
       const expectedTotal = startSizes[leftIndex] + startSizes[rightIndex];
 
       if (Math.abs(totalSize - expectedTotal) < 0.1) {
-        // Persist new ratios and recalc sizes via calc() including divider pixels
-        /** @type {HTMLElement} */ (leftWrapper).dataset.ratio =
-          String(clampedLeftSize);
-        /** @type {HTMLElement} */ (rightWrapper).dataset.ratio =
-          String(clampedRightSize);
-        recalcAllWrapperSizes(iframeContainer, isVerticalLayout());
+        applyWrapperPrimarySize(
+          leftWrapper,
+          clampedLeftSize,
+          !isVerticalDrag,
+          container,
+        );
+        applyWrapperPrimarySize(
+          rightWrapper,
+          clampedRightSize,
+          !isVerticalDrag,
+          container,
+        );
       }
     }
   };
@@ -96,46 +108,35 @@ export const addDividerDragFunctionality = (divider) => {
     e.preventDefault();
 
     isDragging = true;
-    startPosition = isVerticalLayout() ? e.clientY : e.clientX;
+    const isVerticalDrag = window.getComputedStyle(divider).cursor === 'col-resize';
+    startPosition = isVerticalDrag ? e.clientX : e.clientY;
 
-    const wrappers = /** @type {HTMLDivElement[]} */ (
-      Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
+    const container = isVerticalDrag ? iframeContainer : divider.parentElement;
+    const wrappers = Array.from(container.children).filter(
+      (c) =>
+        c.classList.contains('iframe-wrapper') ||
+        c.classList.contains('iframe-column-wrapper'),
     );
-    const wrappersSorted = wrappers
-      .map((w, domIndex) => ({
-        el: w,
-        orderValue: Number.parseInt(
-          /** @type {HTMLElement} */ (w).style.order || `${domIndex * 2}`,
-          10,
-        ),
-      }))
-      .sort((a, b) => a.orderValue - b.orderValue)
-      .map((x) => x.el);
 
-    startSizes = wrappersSorted.map((wrapper) => {
+    startSizes = wrappers.map((wrapper) => {
       const ds = /** @type {HTMLElement} */ (wrapper).dataset;
       const v = ds && ds.ratio ? Number.parseFloat(ds.ratio) : NaN;
-      return Number.isFinite(v) ? v : 100 / wrappersSorted.length;
+      return Number.isFinite(v) ? v : 100 / wrappers.length;
     });
 
-    const dividerOrder = Number.parseInt(
-      /** @type {HTMLElement} */ (divider).style.order || '1',
-      10,
-    );
-    const leftIndex = Math.max(0, Math.floor((dividerOrder - 1) / 2));
-    const rightIndex = Math.min(wrappersSorted.length - 1, leftIndex + 1);
+    const dividerIndex = wrappers.indexOf(divider.previousElementSibling) + 1;
 
     dragState = {
-      leftWrapper: wrappersSorted[leftIndex],
-      rightWrapper: wrappersSorted[rightIndex],
-      leftIndex,
-      rightIndex,
+      leftWrapper: wrappers[dividerIndex - 1],
+      rightWrapper: wrappers[dividerIndex],
+      leftIndex: dividerIndex - 1,
+      rightIndex: dividerIndex,
+      isVerticalDrag,
+      container,
     };
 
     document.body.style.userSelect = 'none';
-    document.body.style.cursor = isVerticalLayout()
-      ? 'row-resize'
-      : 'col-resize';
+    document.body.style.cursor = isVerticalDrag ? 'col-resize' : 'row-resize';
 
     const iframes = /** @type {NodeListOf<HTMLIFrameElement>} */ (
       document.querySelectorAll('.resizable-iframe')

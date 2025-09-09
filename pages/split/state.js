@@ -2,7 +2,7 @@
 
 export const appState = {
   iframeContainer: /** @type {HTMLDivElement | null} */ (null),
-  isVerticalLayout: false,
+  layoutMode: 'horizontal', // 'horizontal', 'vertical', 'grid'
   setContainer(el) {
     this.iframeContainer = el;
   },
@@ -11,13 +11,21 @@ export const appState = {
       throw new Error('iframeContainer not initialized');
     return this.iframeContainer;
   },
-  setVerticalLayout(isVertical) {
-    this.isVerticalLayout = Boolean(isVertical);
+  setLayoutMode(mode) {
+    if (['horizontal', 'vertical', 'grid'].includes(mode)) {
+      this.layoutMode = mode;
+    } else {
+      console.error('Invalid layout mode:', mode);
+    }
   },
-  getIsVerticalLayout() {
-    return this.isVerticalLayout;
+  getLayoutMode() {
+    return this.layoutMode;
   },
-  toggleVerticalLayout() {
-    this.isVerticalLayout = !this.isVerticalLayout;
+  toggleLayout() {
+    if (this.layoutMode === 'horizontal') {
+      this.layoutMode = 'vertical';
+    } else {
+      this.layoutMode = 'horizontal';
+    }
   },
 };

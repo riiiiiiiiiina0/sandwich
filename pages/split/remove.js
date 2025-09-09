@@ -53,7 +53,7 @@ const closeTabIfSingleRemaining = () => {
 
 export const removeIframe = (index) => {
   const iframeContainer = appState.getContainer();
-  const isVerticalLayout = appState.getIsVerticalLayout();
+  const isVerticalLayout = appState.getLayoutMode() === 'vertical';
 
   const wrappers = /** @type {HTMLDivElement[]} */ (
     Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
@@ -112,7 +112,7 @@ export const removeIframe = (index) => {
     rebuildInterface();
     updateDividerPlusVisibility();
     // Recalc in case divider count changed
-    recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
+    recalcAllWrapperSizes(iframeContainer, appState.getLayoutMode() === 'vertical');
     closeTabIfSingleRemaining();
     updateDocumentTitleFromIframes();
   }

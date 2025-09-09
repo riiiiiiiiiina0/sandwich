@@ -16,6 +16,43 @@ import {
 } from './title.js';
 import { startContentTitleBridge } from './title.js';
 
+const createIframeWrapper = (
+  url,
+  ratio,
+  isVertical,
+  iframeContainer,
+  name,
+) => {
+  const iframeWrapper = document.createElement('div');
+  iframeWrapper.className =
+    'iframe-wrapper group relative flex-shrink-0 flex-grow-0';
+  iframeWrapper.dataset.ratio = String(ratio);
+  applyWrapperPrimarySize(iframeWrapper, ratio, isVertical, iframeContainer);
+
+  const iframe = document.createElement('iframe');
+  iframe.src = url;
+  iframe.name = name;
+  iframe.setAttribute(
+    'sandbox',
+    'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
+  );
+  iframe.setAttribute('allow', 'fullscreen; clipboard-read; clipboard-write');
+  if (isVertical) {
+    iframe.style.height = '100%';
+    iframe.style.width = '100%';
+    iframe.className =
+      'resizable-iframe w-full h-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
+  } else {
+    iframe.style.width = '100%';
+    iframe.style.height = '100%';
+    iframe.className =
+      'resizable-iframe h-full w-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
+  }
+  iframeWrapper.appendChild(iframe);
+  attachIframeTitleListener(iframe);
+  return iframeWrapper;
+};
+
 document.addEventListener('DOMContentLoaded', () => {
   startContentTitleBridge();
 
@@ -79,7 +116,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const ratiosParam = urlParams.get('ratios');
   const layoutParam = urlParams.get('layout');
 
-  appState.setVerticalLayout(layoutParam === 'vertical');
+  if (layoutParam) {
+    appState.setLayoutMode(layoutParam);
+  }
 
   if (!urlsParam) return;
 
@@ -101,80 +140,130 @@ document.addEventListener('DOMContentLoaded', () => {
     ratios = Array(numIframes).fill(100 / numIframes);
   }
 
+  if (urls.length === 4 && layoutParam !== 'horizontal' && layoutParam !== 'vertical') {
+    appState.setLayoutMode('grid');
+  }
   applyLayout();
   attachEdgePlusButtons();
 
-  urls.forEach((url, index) => {
-    const isVerticalLayout = appState.getIsVerticalLayout();
+  if (appState.getLayoutMode() === 'grid') {
+    const column1 = document.createElement('div');
+    column1.className = 'iframe-column-wrapper flex flex-col';
+    column1.style.width = '50%';
+    iframeContainer.appendChild(column1);
 
-    const iframeWrapper = document.createElement('div');
-    iframeWrapper.className =
-      'iframe-wrapper group relative flex-shrink-0 flex-grow-0';
-    /** @type {HTMLElement} */ (iframeWrapper).style.order = String(index * 2);
-    /** @type {HTMLElement} */ (iframeWrapper).dataset.ratio = String(
-      ratios[index],
-    );
-    applyWrapperPrimarySize(
-      iframeWrapper,
-      ratios[index],
-      isVerticalLayout,
+    const verticalDivider = document.createElement('div');
+    verticalDivider.className =
+      'iframe-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
+    iframeContainer.appendChild(verticalDivider);
+    addDividerDragFunctionality(verticalDivider);
+
+    const column2 = document.createElement('div');
+    column2.className = 'iframe-column-wrapper flex flex-col';
+    column2.style.width = '50%';
+    iframeContainer.appendChild(column2);
+
+    const wrapper1 = createIframeWrapper(
+      urls[0],
+      50,
+      true,
       iframeContainer,
+      'sb-iframe-0',
     );
+    column1.appendChild(wrapper1);
 
-    const iframe = /** @type {HTMLIFrameElement} */ (
-      document.createElement('iframe')
+    const horizontalDivider1 = document.createElement('div');
+    horizontalDivider1.className =
+      'iframe-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+    column1.appendChild(horizontalDivider1);
+    addDividerDragFunctionality(horizontalDivider1);
+
+    const wrapper2 = createIframeWrapper(
+      urls[1],
+      50,
+      true,
+      iframeContainer,
+      'sb-iframe-1',
     );
-    iframe.src = url;
-    iframe.name = `sb-iframe-${index}`;
-    iframe.setAttribute(
-      'sandbox',
-      'allow-same-origin allow-scripts allow-forms allow-popups allow-downloads',
+    column1.appendChild(wrapper2);
+
+    const wrapper3 = createIframeWrapper(
+      urls[2],
+      50,
+      true,
+      iframeContainer,
+      'sb-iframe-2',
     );
-    iframe.setAttribute(
-      'allow',
-      'fullscreen; clipboard-read; clipboard-write',
+    column2.appendChild(wrapper3);
+
+    const horizontalDivider2 = document.createElement('div');
+    horizontalDivider2.className =
+      'iframe-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+    column2.appendChild(horizontalDivider2);
+    addDividerDragFunctionality(horizontalDivider2);
+
+    const wrapper4 = createIframeWrapper(
+      urls[3],
+      50,
+      true,
+      iframeContainer,
+      'sb-iframe-3',
     );
-    if (isVerticalLayout) {
-      iframe.style.height = '100%';
-      iframe.style.width = '100%';
-      iframe.className =
-        'resizable-iframe w-full h-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
-    } else {
-      iframe.style.width = '100%';
-      iframe.style.height = '100%';
-      iframe.className =
-        'resizable-iframe h-full w-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
-    }
+    column2.appendChild(wrapper4);
 
-    iframeWrapper.appendChild(iframe);
-    attachIframeTitleListener(iframe);
+    [wrapper1, wrapper2, wrapper3, wrapper4].forEach((wrapper, index) => {
+      const menu = createIframeMenu(wrapper, index, 4);
+      wrapper.appendChild(menu);
+    });
+  } else {
+    urls.forEach((url, index) => {
+      const isVerticalLayout = appState.getLayoutMode() === 'vertical';
 
-    const menu = createIframeMenu(iframeWrapper, index, urls.length);
-    iframeWrapper.appendChild(menu);
+      const iframeWrapper = createIframeWrapper(
+        url,
+        ratios[index],
+        isVerticalLayout,
+        iframeContainer,
+        `sb-iframe-${index}`,
+      );
+      /** @type {HTMLElement} */ (iframeWrapper).style.order = String(
+        index * 2,
+      );
 
-    iframeContainer.appendChild(iframeWrapper);
+      const menu = createIframeMenu(iframeWrapper, index, urls.length);
+      iframeWrapper.appendChild(menu);
 
-    if (index < urls.length - 1) {
-      const divider = document.createElement('div');
-      divider.className =
-        'iframe-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300';
-      if (isVerticalLayout) {
-        divider.className +=
-          ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
-      } else {
-        divider.className +=
-          ' m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
+      iframeContainer.appendChild(iframeWrapper);
+
+      if (index < urls.length - 1) {
+        const divider = document.createElement('div');
+        divider.className =
+          'iframe-divider group relative bg-base-200 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300';
+        if (isVerticalLayout) {
+          divider.className +=
+            ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+        } else {
+          divider.className +=
+            ' m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
+        }
+        /** @type {HTMLElement} */ (divider).style.order = String(
+          index * 2 + 1,
+        );
+        iframeContainer.appendChild(divider);
+        addDividerDragFunctionality(divider);
+        attachDividerPlus(divider);
       }
-      /** @type {HTMLElement} */ (divider).style.order = String(index * 2 + 1);
-      iframeContainer.appendChild(divider);
-      addDividerDragFunctionality(divider);
-      attachDividerPlus(divider);
-    }
-  });
+    });
+  }
   // After initial creation, ensure plus visibility matches count
   updateDividerPlusVisibility();
   // Recalculate all wrapper sizes once with final divider count
-  recalcAllWrapperSizes(iframeContainer, appState.getIsVerticalLayout());
+  if (appState.getLayoutMode() !== 'grid') {
+    recalcAllWrapperSizes(
+      iframeContainer,
+      appState.getLayoutMode() === 'vertical',
+    );
+  }
   // Initialize document title from iframes
   updateDocumentTitleFromIframes();
 });

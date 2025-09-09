@@ -6,11 +6,16 @@ import { recalcAllWrapperSizes } from './size.js';
 
 export const applyLayout = () => {
   const iframeContainer = appState.getContainer();
-  const isVerticalLayout = appState.getIsVerticalLayout();
+  const layoutMode = appState.getLayoutMode();
 
-  if (isVerticalLayout) {
+  if (layoutMode === 'grid') {
+    iframeContainer.className = 'flex flex-row h-screen w-screen';
+    return;
+  }
+
+  if (layoutMode === 'vertical') {
     iframeContainer.className = 'flex flex-col h-screen w-screen';
-  } else {
+  } else if (layoutMode === 'horizontal') {
     iframeContainer.className = 'flex flex-row h-screen w-screen';
   }
 
@@ -24,8 +29,10 @@ export const applyLayout = () => {
     document.querySelectorAll('.iframe-wrapper')
   );
 
+  const isVertical = layoutMode === 'vertical';
+
   iframes.forEach((iframe) => {
-    if (isVerticalLayout) {
+    if (isVertical) {
       iframe.className =
         'resizable-iframe w-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
       iframe.style.width = '100%';
@@ -39,11 +46,11 @@ export const applyLayout = () => {
   });
 
   // Recalculate wrapper sizes using stored ratios and divider count
-  recalcAllWrapperSizes(iframeContainer, isVerticalLayout);
+  recalcAllWrapperSizes(iframeContainer, isVertical);
 
   // Enforce fixed 4px thickness (Tailwind h-1/w-1) for dividers
   dividers.forEach((divider) => {
-    if (isVerticalLayout) {
+    if (isVertical) {
       divider.className =
         'iframe-divider group relative bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 flex-shrink-0 flex-grow-0';
       /** @type {HTMLElement} */ (divider).style.height = '4px';
@@ -60,7 +67,7 @@ export const applyLayout = () => {
 };
 
 export const toggleLayout = () => {
-  appState.toggleVerticalLayout();
+  appState.toggleLayout();
   applyLayout();
   updateButtonLabels();
   updateUrlWithState();
@@ -68,7 +75,7 @@ export const toggleLayout = () => {
 
 export const updateButtonLabels = () => {
   const iframeContainer = appState.getContainer();
-  const isVerticalLayout = appState.getIsVerticalLayout();
+  const layoutMode = appState.getLayoutMode();
   const wrappers = Array.from(iframeContainer.children).filter((child) =>
     child.classList.contains('iframe-wrapper'),
   );
@@ -87,7 +94,8 @@ export const updateButtonLabels = () => {
       );
 
       if (layoutBtn) {
-        const iconName = isVerticalLayout ? 'columns' : 'rows';
+        const isVertical = layoutMode === 'vertical';
+        const iconName = isVertical ? 'columns' : 'rows';
         layoutBtn.innerHTML = heroicons[iconName].svg;
         const nextSvg = /** @type {SVGElement|null} */ (
           layoutBtn.querySelector('svg')
@@ -97,35 +105,35 @@ export const updateButtonLabels = () => {
             (heroicons[iconName] && heroicons[iconName].rotation) ?? 0;
           nextSvg.style.transform = `rotate(${baseRotation}deg)`;
         }
-        layoutBtn.title = isVerticalLayout
-          ? 'Horizontal layout'
-          : 'Vertical layout';
+        layoutBtn.title = isVertical ? 'Horizontal layout' : 'Vertical layout';
       }
 
       if (moveLeftBtn) {
+        const isVertical = layoutMode === 'vertical';
         const svg = /** @type {SVGElement|null} */ (
           moveLeftBtn.querySelector('svg')
         );
         if (svg) {
           const baseRotation =
             (heroicons.moveLeft && heroicons.moveLeft.rotation) ?? 0;
-          const extraRotation = isVerticalLayout ? -90 : 0;
+          const extraRotation = isVertical ? -90 : 0;
           svg.style.transform = `rotate(${baseRotation + extraRotation}deg)`;
         }
-        moveLeftBtn.title = isVerticalLayout ? 'Move up' : 'Move left';
+        moveLeftBtn.title = isVertical ? 'Move up' : 'Move left';
       }
 
       if (moveRightBtn) {
+        const isVertical = layoutMode === 'vertical';
         const svg = /** @type {SVGElement|null} */ (
           moveRightBtn.querySelector('svg')
         );
         if (svg) {
           const baseRotation =
             (heroicons.moveRight && heroicons.moveRight.rotation) ?? 0;
-          const extraRotation = isVerticalLayout ? 90 : 0;
+          const extraRotation = isVertical ? 90 : 0;
           svg.style.transform = `rotate(${baseRotation + extraRotation}deg)`;
         }
-        moveRightBtn.title = isVerticalLayout ? 'Move down' : 'Move right';
+        moveRightBtn.title = isVertical ? 'Move down' : 'Move right';
       }
     }
   });

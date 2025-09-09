@@ -2,6 +2,7 @@ import { appState } from './state.js';
 import { createIframeMenu } from './menu.js';
 import { updateCssOrder } from './ordering.js';
 import { updateUrlWithState } from './url.js';
+import { applyLayout } from './layout.js';
 import {
   attachTitleListenersToAllIframes,
   updateDocumentTitleFromIframes,
@@ -10,9 +11,21 @@ import {
 export const rebuildInterface = () => {
   const iframeContainer = appState.getContainer();
 
-  const wrappers = Array.from(iframeContainer.children).filter((child) =>
-    child.classList.contains('iframe-wrapper'),
-  );
+  const wrappers = Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'));
+  const numIframes = wrappers.length;
+  const currentLayout = appState.getLayoutMode();
+
+  if (numIframes === 4 && currentLayout !== 'grid') {
+    appState.setLayoutMode('grid');
+    updateUrlWithState();
+    window.location.reload();
+    return;
+  } else if (numIframes < 4 && currentLayout === 'grid') {
+    appState.setLayoutMode('horizontal');
+    updateUrlWithState();
+    window.location.reload();
+    return;
+  }
 
   const wrappersSorted = wrappers
     .map((w, domIndex) => ({

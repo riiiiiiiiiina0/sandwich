@@ -5,7 +5,7 @@ import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 
 export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
-  const isVerticalLayout = appState.getIsVerticalLayout();
+  const isVerticalLayout = appState.getLayoutMode() === 'vertical';
 
   const menu = document.createElement('div');
   menu.className =
