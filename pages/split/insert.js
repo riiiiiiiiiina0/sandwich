@@ -16,7 +16,7 @@ import { updateUrlWithState } from './url.js';
 export const attachDividerPlus = (divider) => {
   const plusBtn = document.createElement('button');
   plusBtn.className =
-    'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full bg-base-200 hover:bg-blue-300 text-base-content shadow flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-auto z-20';
+    'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-base-200 dark:bg-gray-500 hover:bg-blue-300 text-base-content shadow flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-all duration-150 pointer-events-auto z-20';
   plusBtn.title = 'Insert tab here';
   plusBtn.textContent = '➕';
   plusBtn.dataset.sbPlus = 'true';
@@ -51,7 +51,7 @@ const openTabPicker = async (context, anchor, onSelect) => {
 
   const panel = document.createElement('div');
   panel.className =
-    'absolute max-h-[60vh] w-[420px] overflow-auto bg-white border border-gray-300 rounded-lg shadow-xl p-2 space-y-2';
+    'absolute max-h-[60vh] w-[420px] overflow-auto bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl p-2 space-y-2';
   panel.style.left = `${Math.max(
     8,
     Math.min(window.innerWidth - 428, anchor.x - 210),
@@ -62,7 +62,8 @@ const openTabPicker = async (context, anchor, onSelect) => {
   )}px`;
 
   const header = document.createElement('div');
-  header.className = 'text-sm font-medium text-gray-600 px-1';
+  header.className =
+    'text-sm font-medium text-gray-600 dark:text-gray-300 px-1';
   header.textContent = 'Select a tab to insert';
   panel.appendChild(header);
 
@@ -115,26 +116,27 @@ const openTabPicker = async (context, anchor, onSelect) => {
 
       if (i > 0) {
         const sep = document.createElement('div');
-        sep.className = 'border-t border-gray-200 my-1';
+        sep.className = 'border-t border-gray-200 dark:border-gray-700 my-1';
         listContainer.appendChild(sep);
       }
 
       const ul = document.createElement('ul');
-      ul.className = 'menu bg-white w-full rounded-box';
+      ul.className = 'menu bg-white dark:bg-gray-700 w-full rounded-box';
       for (const tab of tabs) {
         const li = document.createElement('li');
+        li.className = 'max-w-full';
         const a = document.createElement('a');
-        a.className = 'flex items-center gap-2 py-1';
+        a.className = 'flex items-center gap-2 py-1 max-w-full';
         a.href = '#';
 
         const icon = document.createElement('img');
-        icon.className = 'w-4 h-4 rounded';
+        icon.className = 'w-4 h-4 !max-w-4 !max-h-4 rounded';
         if (tab.favIconUrl) icon.src = tab.favIconUrl;
         else icon.src = 'data:image/gif;base64,R0lGODlhAQABAAAAACw=';
         a.appendChild(icon);
 
         const title = document.createElement('div');
-        title.className = 'truncate text-sm';
+        title.className = 'truncate text-sm text-gray-600 dark:text-gray-300';
         title.textContent = tab.title || tab.url || 'Untitled';
         a.appendChild(title);
 
@@ -447,7 +449,7 @@ export const attachEdgePlusButtons = () => {
     btn.type = 'button';
     btn.dataset.sbEdge = side;
     btn.className =
-      'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-base-200 hover:bg-blue-300 text-base-content shadow flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-all duration-150';
+      'absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-7 h-7 rounded-full bg-base-200 dark:bg-gray-500 hover:bg-blue-300 text-base-content shadow flex items-center justify-center text-sm opacity-0 group-hover:opacity-100 transition-all duration-150';
     btn.textContent = '➕';
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
