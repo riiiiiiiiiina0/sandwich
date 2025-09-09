@@ -37,9 +37,19 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      const sourceIframe = document.querySelector(
-        `iframe[data-frame-id="${message.frameId}"]`,
-      );
+      // Prefer explicit message.frameId, else use sender.frameId, else resolve by frameName
+      const resolvedFrameId = message.frameId ?? sender.frameId;
+      let sourceIframe = null;
+      if (typeof resolvedFrameId === 'number') {
+        sourceIframe = document.querySelector(
+          `iframe[data-frame-id="${resolvedFrameId}"]`,
+        );
+      }
+      if (!sourceIframe && typeof message.frameName === 'string') {
+        sourceIframe = document.querySelector(
+          `iframe[name="${message.frameName}"]`,
+        );
+      }
       if (!sourceIframe) {
         // Fallback if frame not found
         insertAtEdge('tail', message.url);

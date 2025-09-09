@@ -9,8 +9,27 @@ if (window.name.startsWith('sb-iframe-')) {
         const url = target.href;
         const isTargetBlank = target.target === '_blank';
         const isYouTubeLink = url && url.includes('youtube.com');
+        // const isModifierOpenRight =
+        //   (navigator.platform.includes('Mac') && (e.metaKey || e.ctrlKey)) ||
+        //   (!navigator.platform.includes('Mac') && (e.altKey || e.ctrlKey));
+        const isModifierOpenRight = e.metaKey;
 
-        // Check if the URL is a YouTube link
+        // If Cmd (mac) or Alt (win) (or Ctrl as alternative) is held, request add-iframe-right
+        if (url && isModifierOpenRight) {
+          e.stopPropagation();
+          e.preventDefault();
+          try {
+            // @ts-ignore sender will include frameId; include window.name for robustness
+            chrome.runtime.sendMessage({
+              action: 'add-iframe-right',
+              url: url,
+              frameName: window.name,
+            });
+          } catch (_err) {}
+          return;
+        }
+
+        // Keep existing behavior for _blank and YouTube links: open as browser tab
         if (url && (isTargetBlank || isYouTubeLink)) {
           e.stopPropagation();
           e.preventDefault(); // Prevent the default link behavior
