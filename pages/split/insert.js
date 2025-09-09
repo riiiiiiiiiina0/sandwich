@@ -51,7 +51,7 @@ const openTabPicker = async (context, anchor, onSelect) => {
 
   const panel = document.createElement('div');
   panel.className =
-    'absolute max-h-[60vh] w-[420px] overflow-auto bg-white border border-gray-300 rounded-lg shadow-xl p-2 space-y-2';
+    'absolute max-h-[60vh] w-[420px] overflow-auto bg-base-100 border border-gray-300 dark:border-gray-700 rounded-lg shadow-xl p-2 space-y-2';
   panel.style.left = `${Math.max(
     8,
     Math.min(window.innerWidth - 428, anchor.x - 210),
@@ -62,7 +62,7 @@ const openTabPicker = async (context, anchor, onSelect) => {
   )}px`;
 
   const header = document.createElement('div');
-  header.className = 'text-sm font-medium text-gray-600 px-1';
+  header.className = 'text-sm font-medium text-gray-600 dark:text-gray-300 px-1';
   header.textContent = 'Select a tab to insert';
   panel.appendChild(header);
 
@@ -115,12 +115,12 @@ const openTabPicker = async (context, anchor, onSelect) => {
 
       if (i > 0) {
         const sep = document.createElement('div');
-        sep.className = 'border-t border-gray-200 my-1';
+        sep.className = 'border-t border-gray-200 dark:border-gray-700 my-1';
         listContainer.appendChild(sep);
       }
 
       const ul = document.createElement('ul');
-      ul.className = 'menu bg-white w-full rounded-box';
+      ul.className = 'menu bg-base-100 w-full rounded-box';
       for (const tab of tabs) {
         const li = document.createElement('li');
         const a = document.createElement('a');
