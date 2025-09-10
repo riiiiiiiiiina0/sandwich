@@ -60,17 +60,17 @@ export const applyLayout = () => {
     iframe.style.height = '';
     if (isGridLayout) {
       iframe.className =
-        'resizable-iframe w-full h-full border border-gray-300 box-border rounded-lg pointer-events-auto';
+        'resizable-iframe w-full h-full box-border pointer-events-auto';
       iframe.style.width = '100%';
       iframe.style.height = '100%';
     } else if (isVerticalLayout) {
       iframe.className =
-        'resizable-iframe w-full h-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
+        'resizable-iframe w-full h-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
       iframe.style.width = '100%';
       iframe.style.height = '100%';
     } else {
       iframe.className =
-        'resizable-iframe h-full w-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
+        'resizable-iframe h-full w-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
       iframe.style.width = '100%';
       iframe.style.height = '100%';
     }
