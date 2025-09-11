@@ -8,8 +8,9 @@ import {
 } from './layout.js';
 import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
+import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
 
-export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
+export const createIframeMenu = (iframeWrapper, index, totalCount) => {
   const mode = appState.getLayoutMode();
   const isVerticalLayout = mode === 'vertical';
   const isGridLayout = mode === 'grid';
@@ -80,6 +81,42 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
     menu.appendChild(layoutBtn);
   }
 
+  const fullPageBtn = document.createElement('button');
+  fullPageBtn.className =
+    'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+  fullPageBtn.dataset.role = 'full-page';
+  fullPageBtn.appendChild(createHeroicon('pointingOut'));
+  fullPageBtn.title = 'Full page';
+  fullPageBtn.addEventListener('click', () => {
+    if (isFullPage(iframeWrapper)) {
+      collapseIframe(iframeWrapper);
+      fullPageBtn.replaceChild(
+        createHeroicon('pointingOut'),
+        fullPageBtn.firstChild,
+      );
+    } else {
+      expandIframe(iframeWrapper);
+      fullPageBtn.replaceChild(
+        createHeroicon('pointingIn'),
+        fullPageBtn.firstChild,
+      );
+    }
+    menu.childNodes.forEach((node) => {
+      const button = /** @type {HTMLButtonElement} */ (node);
+      if (
+        button.dataset.role === 'layout' ||
+        button.dataset.role === 'move-left' ||
+        button.dataset.role === 'move-right' ||
+        button.dataset.role === 'grid' ||
+        button.dataset.role === 'to-horizontal' ||
+        button.dataset.role === 'to-vertical'
+      ) {
+        button.style.display = isFullPage(iframeWrapper) ? 'none' : '';
+      }
+    });
+  });
+  menu.appendChild(fullPageBtn);
+
   const reloadBtn = document.createElement('button');
   reloadBtn.className =
     'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
@@ -87,8 +124,11 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
   reloadBtn.appendChild(createHeroicon('reload'));
   reloadBtn.title = 'Reload';
   reloadBtn.addEventListener('click', () => {
+    if (isFullPage(iframeWrapper)) {
+      collapseIframe(iframeWrapper);
+    }
     const iframe = /** @type {HTMLIFrameElement|null} */ (
-      _iframeWrapper.querySelector('iframe')
+      iframeWrapper.querySelector('iframe')
     );
     if (iframe && iframe.dataset.frameId) {
       const frameId = parseInt(iframe.dataset.frameId, 10);
@@ -114,8 +154,11 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
   backBtn.appendChild(createHeroicon('back'));
   backBtn.title = 'Back';
   backBtn.addEventListener('click', () => {
+    if (isFullPage(iframeWrapper)) {
+      collapseIframe(iframeWrapper);
+    }
     const iframe = /** @type {HTMLIFrameElement|null} */ (
-      _iframeWrapper.querySelector('iframe')
+      iframeWrapper.querySelector('iframe')
     );
     if (iframe && iframe.dataset.frameId) {
       const frameId = parseInt(iframe.dataset.frameId, 10);
@@ -146,7 +189,12 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
     moveLeftIcon.style.transform = `rotate(${baseRotation + extraRotation}deg)`;
     moveLeftBtn.appendChild(moveLeftIcon);
     moveLeftBtn.title = isVerticalLayout ? 'Move up' : 'Move left';
-    moveLeftBtn.addEventListener('click', () => moveIframe(index, -1));
+    moveLeftBtn.addEventListener('click', () => {
+      if (isFullPage(iframeWrapper)) {
+        collapseIframe(iframeWrapper);
+      }
+      moveIframe(index, -1);
+    });
     menu.appendChild(moveLeftBtn);
   }
 
@@ -166,7 +214,12 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
     }deg)`;
     moveRightBtn.appendChild(moveRightIcon);
     moveRightBtn.title = isVerticalLayout ? 'Move down' : 'Move right';
-    moveRightBtn.addEventListener('click', () => moveIframe(index, 1));
+    moveRightBtn.addEventListener('click', () => {
+      if (isFullPage(iframeWrapper)) {
+        collapseIframe(iframeWrapper);
+      }
+      moveIframe(index, 1);
+    });
     menu.appendChild(moveRightBtn);
   }
 
@@ -176,7 +229,12 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
   removeBtn.dataset.role = 'remove';
   removeBtn.appendChild(createHeroicon('close'));
   removeBtn.title = 'Remove';
-  removeBtn.addEventListener('click', () => removeIframe(index));
+  removeBtn.addEventListener('click', () => {
+    if (isFullPage(iframeWrapper)) {
+      collapseIframe(iframeWrapper);
+    }
+    removeIframe(index);
+  });
   menu.appendChild(removeBtn);
 
   // Detach to new browser tab
@@ -187,9 +245,12 @@ export const createIframeMenu = (_iframeWrapper, index, totalCount) => {
   detachBtn.appendChild(createHeroicon('openInNewTab'));
   detachBtn.title = 'Open in new tab';
   detachBtn.addEventListener('click', async () => {
+    if (isFullPage(iframeWrapper)) {
+      collapseIframe(iframeWrapper);
+    }
     try {
       const iframe = /** @type {HTMLIFrameElement|null} */ (
-        _iframeWrapper.querySelector('iframe')
+        iframeWrapper.querySelector('iframe')
       );
       if (!iframe) return;
       const liveSrc = iframe.getAttribute('data-sb-current-url');
