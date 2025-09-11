@@ -1,5 +1,11 @@
 import { appState } from './state.js';
-import { applyLayout, ensureLinearDividers } from './layout.js';
+import {
+  applyLayout,
+  ensureLinearDividers,
+  setLayoutToGrid,
+  setLayoutToHorizontal,
+  setLayoutToVertical,
+} from './layout.js';
 import { createIframeMenu } from './menu.js';
 import { addDividerDragFunctionality } from './drag.js';
 import {
@@ -20,7 +26,15 @@ document.addEventListener('DOMContentLoaded', () => {
   startContentTitleBridge();
 
   chrome.runtime.onMessage.addListener((message, sender) => {
-    if (message.action === 'registerFrame') {
+    if (message.action === 'change-layout') {
+      if (message.layout === 'grid') {
+        setLayoutToGrid();
+      } else if (message.layout === 'vertical') {
+        setLayoutToVertical();
+      } else if (message.layout === 'horizontal') {
+        setLayoutToHorizontal();
+      }
+    } else if (message.action === 'registerFrame') {
       const { frameName } = message;
       if (frameName && sender.frameId) {
         const iframe = /** @type {HTMLIFrameElement|null} */ (

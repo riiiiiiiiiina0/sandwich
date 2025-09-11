@@ -1,5 +1,5 @@
 import { appState } from './state.js';
-import { heroicons } from './heroicons.js';
+import { heroicons } from '../shared/heroicons.js';
 import { updateCssOrder } from './ordering.js';
 import { updateUrlWithState } from './url.js';
 import { recalcAllWrapperSizes } from './size.js';
@@ -171,12 +171,19 @@ export const toggleLayout = () => {
 };
 
 export const setLayoutToGrid = () => {
-  appState.setLayoutMode('grid');
-  // In grid, equalize size implicitly via grid; clear ratios for clarity
   const iframeContainer = appState.getContainer();
   const wrappers = /** @type {NodeListOf<HTMLDivElement>} */ (
     iframeContainer.querySelectorAll('.iframe-wrapper')
   );
+
+  // Only allow grid layout for 4 iframes
+  if (wrappers.length !== 4) {
+    console.log('Grid layout is only available for 4 frames.');
+    return;
+  }
+
+  appState.setLayoutMode('grid');
+  // In grid, equalize size implicitly via grid; clear ratios for clarity
   wrappers.forEach((w) => {
     /** @type {HTMLElement} */ (w).dataset.ratio = '';
   });
