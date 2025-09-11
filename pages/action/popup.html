@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link href="../libs/daisyui@5.css" rel="stylesheet" type="text/css" />
+  <script src="../libs/tailwindcss@4.js"></script>
+  <style>
+    @media (prefers-color-scheme: dark) {
+      body {
+        background-color: #1d232a;
+        color: #a6adbb;
+      }
+    }
+  </style>
+</head>
+
+<body class="w-48">
+  <div class="p-2 space-y-2">
+    <button id="ungroup-btn" class="btn btn-sm w-full">Ungroup</button>
+    <div class="flex justify-between items-center space-x-1">
+      <button id="grid-btn" class="btn btn-sm btn-outline flex-1">Grid</button>
+      <button id="vertical-btn" class="btn btn-sm btn-outline flex-1">Vertical</button>
+      <button id="horizontal-btn" class="btn btn-sm btn-outline flex-1">Horizontal</button>
+    </div>
+  </div>
+  <script type="module" src="popup.js"></script>
+</body>
+
+</html>
