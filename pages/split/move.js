@@ -3,7 +3,7 @@ import { updateCssOrder } from './ordering.js';
 import { rebuildInterface } from './rebuild.js';
 import { updateDocumentTitleFromIframes } from './title.js';
 
-export const moveIframe = (fromIndex, direction) => {
+export const moveIframe = (fromWrapper, direction) => {
   const iframeContainer = appState.getContainer();
   const wrappers = /** @type {HTMLDivElement[]} */ (
     Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
@@ -20,16 +20,21 @@ export const moveIframe = (fromIndex, direction) => {
     .sort((a, b) => a.orderValue - b.orderValue)
     .map((x) => x.el);
 
-  const toIndex = fromIndex + direction;
+  const fromIndex = wrappersSorted.indexOf(fromWrapper);
+  if (fromIndex === -1) {
+    return;
+  }
+
+  const directionValue = direction === 'left' ? -1 : 1;
+  const toIndex = fromIndex + directionValue;
+
   if (
     toIndex < 0 ||
-    toIndex >= wrappersSorted.length ||
-    toIndex === fromIndex
+    toIndex >= wrappersSorted.length
   ) {
     return;
   }
 
-  const fromWrapper = wrappersSorted[fromIndex];
   const toWrapper = wrappersSorted[toIndex];
 
   const fromOrder = Number.parseInt(

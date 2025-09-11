@@ -44,3 +44,16 @@ export const updateUrlWithState = () => {
   newUrl.searchParams.set('layout', mode);
   window.history.replaceState({}, '', newUrl.toString());
 };
+
+export const detachIframe = (iframe) => {
+    if (!iframe) return;
+    const liveSrc = iframe.getAttribute('data-sb-current-url');
+    const originalSrc = iframe.getAttribute('src');
+    const url = (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
+    if (!url) return;
+    try {
+        chrome.tabs.create({ url, active: true });
+    } catch (_e) {
+        // no-op
+    }
+}

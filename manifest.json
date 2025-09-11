@@ -12,6 +12,7 @@
   "action": {
     "default_title": "Sandwich Bear"
   },
+  "options_page": "pages/options.html",
   "permissions": [
     "tabs",
     "declarativeNetRequest",

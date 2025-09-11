@@ -9,6 +9,7 @@ import {
 import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
+import { detachIframe } from './url.js';
 
 export const createIframeMenu = (iframeWrapper, index, totalCount) => {
   const mode = appState.getLayoutMode();
@@ -193,7 +194,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
       if (isFullPage(iframeWrapper)) {
         collapseIframe(iframeWrapper);
       }
-      moveIframe(index, -1);
+      moveIframe(iframeWrapper, 'left');
     });
     menu.appendChild(moveLeftBtn);
   }
@@ -218,7 +219,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
       if (isFullPage(iframeWrapper)) {
         collapseIframe(iframeWrapper);
       }
-      moveIframe(index, 1);
+      moveIframe(iframeWrapper, 'right');
     });
     menu.appendChild(moveRightBtn);
   }
@@ -233,7 +234,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     if (isFullPage(iframeWrapper)) {
       collapseIframe(iframeWrapper);
     }
-    removeIframe(index);
+    removeIframe(iframeWrapper);
   });
   menu.appendChild(removeBtn);
 
@@ -244,28 +245,16 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
   detachBtn.dataset.role = 'detach';
   detachBtn.appendChild(createHeroicon('openInNewTab'));
   detachBtn.title = 'Open in new tab';
-  detachBtn.addEventListener('click', async () => {
+  detachBtn.addEventListener('click', () => {
     if (isFullPage(iframeWrapper)) {
       collapseIframe(iframeWrapper);
     }
-    try {
-      const iframe = /** @type {HTMLIFrameElement|null} */ (
-        iframeWrapper.querySelector('iframe')
-      );
-      if (!iframe) return;
-      const liveSrc = iframe.getAttribute('data-sb-current-url');
-      const originalSrc = iframe.getAttribute('src');
-      const url =
-        (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
-      if (!url) return;
-      try {
-        await chrome.tabs.create({ url, active: true });
-      } catch (_e) {
-        // no-op
-      }
-      removeIframe(index);
-    } catch (_e) {
-      // no-op
+    const iframe = /** @type {HTMLIFrameElement|null} */ (
+      iframeWrapper.querySelector('iframe')
+    );
+    if (iframe) {
+      detachIframe(iframe);
+      removeIframe(iframeWrapper);
     }
   });
   menu.appendChild(detachBtn);

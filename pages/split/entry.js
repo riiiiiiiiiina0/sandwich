@@ -21,6 +21,7 @@ import {
   updateDocumentTitleFromIframes,
 } from './title.js';
 import { startContentTitleBridge } from './title.js';
+import { initShortcuts } from './shortcuts.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   startContentTitleBridge();
@@ -225,4 +226,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   // Initialize document title from iframes
   updateDocumentTitleFromIframes();
+  initShortcuts();
 });
