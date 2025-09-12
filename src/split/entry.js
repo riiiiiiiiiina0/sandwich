@@ -25,6 +25,9 @@ import {
   attachActiveHoverListener,
   attachActiveListenersToAllIframes,
 } from './active.js';
+import { moveIframe } from './move.js';
+import { removeIframe } from './remove.js';
+import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   startContentTitleBridge();
@@ -98,6 +101,36 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         insertAtEdge('tail', message.url);
       }
+    } else if (message.action === 'sb:key') {
+      // Handle forwarded key events from iframes
+      const k = String(message.key || '').toLowerCase();
+      if (!message.altKey) return;
+      if (!['a', 'd', 'e', 'x', 'f'].includes(k)) return;
+
+      // Resolve the iframe from sender.frameId or message.frameName
+      let srcIframe = null;
+      if (typeof sender.frameId === 'number') {
+        srcIframe = document.querySelector(
+          `iframe[data-frame-id="${sender.frameId}"]`,
+        );
+      }
+      if (!srcIframe && typeof message.frameName === 'string') {
+        srcIframe = document.querySelector(
+          `iframe[name="${message.frameName}"]`,
+        );
+      }
+      const iframe = /** @type {HTMLIFrameElement|null} */ (srcIframe);
+      if (!iframe) return;
+
+      // Mark it active for consistency
+      if (appState.setActiveIframe) appState.setActiveIframe(iframe);
+
+      // Map Alt keys to actions
+      if (k === 'a') handleShortcutForIframe(iframe, 'move-left');
+      else if (k === 'd') handleShortcutForIframe(iframe, 'move-right');
+      else if (k === 'e') handleShortcutForIframe(iframe, 'detach-iframe');
+      else if (k === 'x') handleShortcutForIframe(iframe, 'remove-iframe');
+      else if (k === 'f') handleShortcutForIframe(iframe, 'toggle-full-page');
     }
   });
 
@@ -245,4 +278,100 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize document title from iframes
   updateDocumentTitleFromIframes();
   attachActiveListenersToAllIframes();
+
+  /**
+   * Execute shortcut action for a specific iframe
+   * @param {HTMLIFrameElement} iframe
+   * @param {'move-left'|'move-right'|'detach-iframe'|'remove-iframe'|'toggle-full-page'} action
+   * @returns
+   */
+  const handleShortcutForIframe = (iframe, action) => {
+    if (!iframe) return;
+    const wrapper = /** @type {HTMLDivElement|null} */ (
+      iframe.closest('.iframe-wrapper')
+    );
+    if (!wrapper) return;
+
+    const iframeContainer = appState.getContainer();
+    const wrappers = /** @type {HTMLDivElement[]} */ (
+      Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
+    );
+    const wrappersSorted = wrappers
+      .map((w, domIndex) => ({
+        el: w,
+        orderValue: Number.parseInt(
+          /** @type {HTMLElement} */ (w).style.order || `${domIndex * 2}`,
+          10,
+        ),
+      }))
+      .sort((a, b) => a.orderValue - b.orderValue)
+      .map((x) => x.el);
+    const index = wrappersSorted.indexOf(wrapper);
+    if (index < 0) return;
+
+    if (action === 'move-left') {
+      moveIframe(index, -1);
+      return;
+    }
+    if (action === 'move-right') {
+      moveIframe(index, 1);
+      return;
+    }
+    if (action === 'detach-iframe') {
+      const liveSrc = iframe.getAttribute('data-sb-current-url');
+      const originalSrc = iframe.getAttribute('src');
+      const url =
+        (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
+      if (url) {
+        try {
+          chrome.tabs.create({ url, active: true });
+        } catch (_e) {}
+        removeIframe(index);
+      }
+      return;
+    }
+    if (action === 'remove-iframe') {
+      removeIframe(index);
+      return;
+    }
+    if (action === 'toggle-full-page') {
+      if (isFullPage(wrapper)) {
+        collapseIframe(wrapper);
+      } else {
+        expandIframe(wrapper);
+      }
+      return;
+    }
+  };
+
+  // Keyboard shortcuts acting on the active iframe
+  document.addEventListener('keydown', async (e) => {
+    try {
+      if (!e.altKey) return;
+      const target = /** @type {HTMLElement} */ (e.target);
+      const tag = (target && target.tagName) || '';
+      if (
+        tag === 'INPUT' ||
+        tag === 'TEXTAREA' ||
+        (target && target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const active = appState.getActiveIframe && appState.getActiveIframe();
+      if (!active) return;
+      // Delegate to shared handler
+      const k = String(e.key || '').toLowerCase();
+      if (!['a', 'd', 'e', 'x', 'f'].includes(k)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      if (k === 'a') handleShortcutForIframe(active, 'move-left');
+      else if (k === 'd') handleShortcutForIframe(active, 'move-right');
+      else if (k === 'e') handleShortcutForIframe(active, 'detach-iframe');
+      else if (k === 'x') handleShortcutForIframe(active, 'remove-iframe');
+      else if (k === 'f') handleShortcutForIframe(active, 'toggle-full-page');
+    } catch (_e) {
+      // no-op
+    }
+  });
 });
