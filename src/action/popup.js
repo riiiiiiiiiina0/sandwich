@@ -1,4 +1,4 @@
-import { heroicons } from '../../pages/shared/heroicons.js';
+import { heroicons } from '../../docs/shared/heroicons.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   const ungroupBtn = document.getElementById('ungroup-btn');

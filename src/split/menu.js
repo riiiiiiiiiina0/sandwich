@@ -1,5 +1,5 @@
 import { appState } from './state.js';
-import { heroicons } from '../../pages/shared/heroicons.js';
+import { heroicons } from '../../docs/shared/heroicons.js';
 import {
   toggleLayout,
   setLayoutToGrid,
