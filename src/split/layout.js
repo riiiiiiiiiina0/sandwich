@@ -148,12 +148,12 @@ export const applyLayout = () => {
     dividers.forEach((divider) => {
       if (isVerticalLayout) {
         divider.className =
-          'iframe-divider group relative bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 flex-shrink-0 flex-grow-0';
+          'iframe-divider group relative z-20 bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 flex-shrink-0 flex-grow-0';
         /** @type {HTMLElement} */ (divider).style.height = '4px';
         /** @type {HTMLElement} */ (divider).style.width = '';
       } else {
         divider.className =
-          'iframe-divider group relative bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 w-1 h-full cursor-col-resize min-w-1 flex-shrink-0 flex-grow-0';
+          'iframe-divider group relative z-20 bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 w-1 h-full cursor-col-resize min-w-1 flex-shrink-0 flex-grow-0';
         /** @type {HTMLElement} */ (divider).style.width = '4px';
         /** @type {HTMLElement} */ (divider).style.height = '';
       }
@@ -367,15 +367,16 @@ export const ensureLinearDividers = () => {
   for (let i = 0; i < sorted.length - 1; i++) {
     const left = sorted[i];
     const divider = document.createElement('div');
-    divider.className = 'iframe-divider group relative';
+    divider.className =
+      'iframe-divider group relative z-20 bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300';
     if (isVerticalLayout) {
       divider.className +=
-        ' bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
+        ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
       /** @type {HTMLElement} */ (divider).style.height = '4px';
       /** @type {HTMLElement} */ (divider).style.width = '';
     } else {
       divider.className +=
-        ' bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300 m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
+        ' m-0 p-0 w-1 h-full cursor-col-resize min-w-1 relative flex-shrink-0 flex-grow-0';
       /** @type {HTMLElement} */ (divider).style.width = '4px';
       /** @type {HTMLElement} */ (divider).style.height = '';
     }

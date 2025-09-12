@@ -250,12 +250,12 @@ export const insertAtDivider = (divider, url) => {
     iframe.style.height = '100%';
     iframe.style.width = '100%';
     iframe.className =
-      'resizable-iframe w-full h-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
+      'resizable-iframe w-full h-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
   } else {
     iframe.style.width = '100%';
     iframe.style.height = '100%';
     iframe.className =
-      'resizable-iframe h-full w-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
+      'resizable-iframe h-full w-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
   }
   newWrapper.appendChild(iframe);
   attachIframeTitleListener(iframe);
@@ -264,7 +264,8 @@ export const insertAtDivider = (divider, url) => {
   divider.insertAdjacentElement('afterend', newWrapper);
 
   const newDivider = document.createElement('div');
-  newDivider.className = 'iframe-divider group relative';
+  newDivider.className =
+    'iframe-divider group relative z-20 bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300';
   if (isVerticalLayout) {
     newDivider.className +=
       ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
@@ -352,12 +353,12 @@ export const insertAtEdge = (position, url) => {
     iframe.style.height = '100%';
     iframe.style.width = '100%';
     iframe.className =
-      'resizable-iframe w-full h-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
+      'resizable-iframe w-full h-full border border-gray-300 box-border pointer-events-auto flex-shrink-0 flex-grow-0';
   } else {
     iframe.style.width = '100%';
     iframe.style.height = '100%';
     iframe.className =
-      'resizable-iframe h-full w-full border border-gray-300 box-border rounded-lg pointer-events-auto flex-shrink-0 flex-grow-0';
+      'resizable-iframe h-full w-full border border-gray-300 box-border pointer-events-auto flex-shrink-0 flex-grow-0';
   }
   newWrapper.appendChild(iframe);
   attachIframeTitleListener(iframe);
@@ -368,7 +369,8 @@ export const insertAtEdge = (position, url) => {
     const first = wrappersSorted[0];
     iframeContainer.insertBefore(newWrapper, first);
     const divider = document.createElement('div');
-    divider.className = 'iframe-divider group relative';
+    divider.className =
+      'iframe-divider group relative z-20 bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300';
     if (isVerticalLayout) {
       divider.className +=
         ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
@@ -386,7 +388,8 @@ export const insertAtEdge = (position, url) => {
   } else {
     const last = wrappersSorted[wrappersSorted.length - 1];
     const divider = document.createElement('div');
-    divider.className = 'iframe-divider group relative';
+    divider.className =
+      'iframe-divider group relative z-20 bg-base-300 dark:bg-gray-600 hover:bg-blue-400 transition-colors delay-300';
     if (isVerticalLayout) {
       divider.className +=
         ' m-0 p-0 h-1 w-full cursor-row-resize min-h-1 relative flex-shrink-0 flex-grow-0';
