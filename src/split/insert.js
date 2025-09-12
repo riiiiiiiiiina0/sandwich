@@ -232,9 +232,6 @@ export const insertAtDivider = (divider, url) => {
   const newWrapper = document.createElement('div');
   newWrapper.className =
     'iframe-wrapper group relative flex-shrink-0 flex-grow-0';
-  /** @type {HTMLElement} */ (newWrapper).style.order = String(
-    dividerOrder + 1,
-  );
 
   const iframe = /** @type {HTMLIFrameElement} */ (
     document.createElement('iframe')
@@ -276,9 +273,6 @@ export const insertAtDivider = (divider, url) => {
     /** @type {HTMLElement} */ (newDivider).style.width = '4px';
     /** @type {HTMLElement} */ (newDivider).style.height = '';
   }
-  /** @type {HTMLElement} */ (newDivider).style.order = String(
-    dividerOrder + 2,
-  );
   newWrapper.insertAdjacentElement('afterend', newDivider);
   addDividerDragFunctionality(newDivider);
   attachDividerPlus(newDivider);
@@ -297,6 +291,7 @@ export const insertAtDivider = (divider, url) => {
     const newRatio = 100 / allWrappers.length;
     allWrappers.forEach((w) => {
       /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
+      applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
     });
 
     // Recreate menus and normalize order/url
@@ -417,6 +412,7 @@ export const insertAtEdge = (position, url) => {
     const newRatio = 100 / allWrappers.length;
     allWrappers.forEach((w) => {
       /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
+      applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
     });
 
     rebuildInterface();
