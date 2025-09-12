@@ -404,6 +404,8 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     chrome.tabs.create({ url: message.url });
   } else if (message.action === 'ungroup') {
     await doUngroup();
+  } else if (message === 'isInstalled') {
+    sendResponse({ status: 'installed' });
   }
 });
 

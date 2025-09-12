@@ -65,7 +65,32 @@
       [];
 
     // For now, just expose in console for inspection
-    console.log({ urls, layout, titles });
+    console.log('data:', { urls, layout, titles });
+
+    // Check if extension is installed
+    let isInstalled = false;
+    const extensionId = "ajlaaeahbfobidnkjlmbnhhdpnhghnnk";
+    if ('chrome' in window && chrome.runtime?.sendMessage) {
+      chrome.runtime.sendMessage(extensionId, { message: "isInstalled" }, (response) => {
+        if (response && response.status === "installed") {
+          console.log("Extension is installed!");
+          isInstalled = true;
+        } else {
+          console.log("Extension is not installed.");
+        }
+      });
+    } else {
+      console.log("Extension is not installed. (chrome api not available)");
+    }
+    console.log('isInstalled:', isInstalled);
+
+    if (urls.length > 0 && isInstalled) {
+      const l = layout || 'horizontal';
+      const r = ratios?.length > 0 ? ratios.join(',') : (1 / urls.length).toFixed(1).repeat(urls.length).join(',');
+      const splitPageUrl = `chrome-extension://${extensionId}/src/split.html?urls=${urls.map((u) => encodeURIComponent(u)).join(',')}&ratios=${r}&layout=${l}`;
+      location.href = splitPageUrl;
+    }
+
   </script>
 </body>
 

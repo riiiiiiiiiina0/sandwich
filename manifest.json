@@ -60,5 +60,23 @@
       "all_frames": true,
       "match_about_blank": true
     }
-  ]
+  ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "src/split.html",
+        "src/split/*",
+        "docs/libs/*",
+        "docs/shared/*"
+      ],
+      "matches": [
+        "https://riiiiiiiiiina0.github.io/*"
+      ]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://riiiiiiiiiina0.github.io/*"
+    ]
+  }
 }
