@@ -7,6 +7,8 @@ export const appState = {
   // Grid split percentages (for 2x2): left column width and top row height
   gridColumnPercent: 50,
   gridRowPercent: 50,
+  // Currently hovered/active iframe
+  activeIframe: /** @type {HTMLIFrameElement | null} */ (null),
   setContainer(el) {
     this.iframeContainer = el;
   },
@@ -14,6 +16,26 @@ export const appState = {
     if (!this.iframeContainer)
       throw new Error('iframeContainer not initialized');
     return this.iframeContainer;
+  },
+  setActiveIframe(iframe) {
+    if (this.activeIframe !== iframe) {
+      this.activeIframe = iframe;
+      try {
+        const src =
+          iframe?.getAttribute('data-sb-current-url') ||
+          iframe?.getAttribute('src') ||
+          iframe?.src ||
+          '';
+        // eslint-disable-next-line no-console
+        console.log('[SandwichBear] Active iframe changed:', iframe, src);
+      } catch (_e) {
+        // eslint-disable-next-line no-console
+        console.log('[SandwichBear] Active iframe changed:', iframe);
+      }
+    }
+  },
+  getActiveIframe() {
+    return this.activeIframe;
   },
   // Back-compat APIs with prior boolean vertical state
   setVerticalLayout(isVertical) {

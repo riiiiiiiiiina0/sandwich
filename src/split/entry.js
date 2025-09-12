@@ -21,6 +21,10 @@ import {
   updateDocumentTitleFromIframes,
 } from './title.js';
 import { startContentTitleBridge } from './title.js';
+import {
+  attachActiveHoverListener,
+  attachActiveListenersToAllIframes,
+} from './active.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   startContentTitleBridge();
@@ -207,6 +211,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     iframeWrapper.appendChild(iframe);
+    attachActiveHoverListener(iframe);
     attachIframeTitleListener(iframe);
 
     const menu = createIframeMenu(iframeWrapper, index, urls.length);
@@ -239,4 +244,5 @@ document.addEventListener('DOMContentLoaded', () => {
   }
   // Initialize document title from iframes
   updateDocumentTitleFromIframes();
+  attachActiveListenersToAllIframes();
 });

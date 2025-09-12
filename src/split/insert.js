@@ -6,6 +6,7 @@ import {
   attachIframeTitleListener,
   updateDocumentTitleFromIframes,
 } from './title.js';
+import { attachActiveHoverListener } from './active.js';
 import { setLayoutToGrid } from './layout.js';
 import { updateUrlWithState } from './url.js';
 
@@ -258,6 +259,7 @@ export const insertAtDivider = (divider, url) => {
       'resizable-iframe h-full w-full box-border pointer-events-auto flex-shrink-0 flex-grow-0';
   }
   newWrapper.appendChild(iframe);
+  attachActiveHoverListener(iframe);
   attachIframeTitleListener(iframe);
 
   // Insert in DOM immediately after the clicked divider, preserving DOM adjacency
@@ -361,6 +363,7 @@ export const insertAtEdge = (position, url) => {
       'resizable-iframe h-full w-full border border-gray-300 box-border pointer-events-auto flex-shrink-0 flex-grow-0';
   }
   newWrapper.appendChild(iframe);
+  attachActiveHoverListener(iframe);
   attachIframeTitleListener(iframe);
 
   if (wrappersSorted.length === 0) {

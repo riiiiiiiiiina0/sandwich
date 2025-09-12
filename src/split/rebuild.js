@@ -6,6 +6,7 @@ import {
   attachTitleListenersToAllIframes,
   updateDocumentTitleFromIframes,
 } from './title.js';
+import { attachActiveListenersToAllIframes } from './active.js';
 
 export const rebuildInterface = () => {
   const iframeContainer = appState.getContainer();
@@ -39,5 +40,6 @@ export const rebuildInterface = () => {
   updateCssOrder();
   updateUrlWithState();
   attachTitleListenersToAllIframes();
+  attachActiveListenersToAllIframes();
   updateDocumentTitleFromIframes();
 };
