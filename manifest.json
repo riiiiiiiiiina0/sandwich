@@ -12,6 +12,15 @@
   "action": {
     "default_title": "Sandwich Bear"
   },
+  "commands": {
+    "toggle-split-view": {
+      "suggested_key": {
+        "default": "Ctrl+Comma",
+        "mac": "Command+Comma"
+      },
+      "description": "Create split page from highlighted tabs, or ungroup iframes in split page into browser tabs"
+    }
+  },
   "permissions": [
     "tabs",
     "declarativeNetRequest",

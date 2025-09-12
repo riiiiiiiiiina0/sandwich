@@ -262,9 +262,7 @@ chrome.runtime.onStartup.addListener(() => {
   updateAction();
 });
 
-// Handle action button click: open up to the first 4 highlighted tabs in split page
-// This only fires on non-split pages, since split pages have a popup.
-chrome.action.onClicked.addListener(async (currentTab) => {
+const doSplit = async (currentTab) => {
   try {
     // Get highlighted tabs in the current window
     const highlightedTabs = await chrome.tabs.query({
@@ -332,74 +330,95 @@ chrome.action.onClicked.addListener(async (currentTab) => {
   } catch (error) {
     console.error('Failed to open split page from highlighted tabs:', error);
   }
-});
+};
+
+const doUngroup = async () => {
+  // Find the current active tab, which should be the split page
+  const [currentTab] = await chrome.tabs.query({
+    active: true,
+    currentWindow: true,
+  });
+  if (!currentTab || !currentTab.url) return;
+
+  try {
+    const urlObj = new URL(currentTab.url);
+    const urlsParam = urlObj.searchParams.get('urls');
+    if (urlsParam) {
+      const urls = urlsParam
+        .split(',')
+        .map((s) => decodeURIComponent(s))
+        .filter((u) => typeof u === 'string' && u.length > 0);
+
+      const baseIndex = (currentTab.index ?? 0) + 1;
+      const newTabs = await Promise.all(
+        urls.map((u) =>
+          chrome.tabs.create({
+            url: u,
+            windowId: currentTab.windowId,
+          }),
+        ),
+      );
+
+      const newTabIds = newTabs
+        .map((tab) => tab.id)
+        .filter((id) => typeof id === 'number');
+
+      if (newTabIds.length > 0) {
+        // If the split page was in a group, move the new tabs into that group.
+        if (
+          typeof currentTab.groupId === 'number' &&
+          currentTab.groupId > -1
+        ) {
+          for (const id of newTabIds) {
+            await chrome.tabs.group({
+              groupId: currentTab.groupId,
+              tabIds: id,
+            });
+          }
+        }
+        // Move the tabs to the desired position.
+        if (newTabIds.length === 1) {
+          await chrome.tabs.move(newTabIds[0], { index: baseIndex });
+        } else {
+          await chrome.tabs.move(newTabIds, { index: baseIndex });
+        }
+      }
+    }
+  } catch (unsplitErr) {
+    console.error('Failed to unsplit tabs:', unsplitErr);
+  }
+
+  if (typeof currentTab.id === 'number') {
+    try {
+      await chrome.tabs.remove(currentTab.id);
+    } catch (removeErr) {
+      console.error('Failed to close split tab:', removeErr);
+    }
+  }
+};
+
+// Handle action button click: open up to the first 4 highlighted tabs in split page
+// This only fires on non-split pages, since split pages have a popup.
+chrome.action.onClicked.addListener(doSplit);
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.action === 'openAnchorLink') {
     // The tabs permission is required for chrome.tabs.create
     chrome.tabs.create({ url: message.url });
   } else if (message.action === 'ungroup') {
-    // Find the current active tab, which should be the split page
-    const [currentTab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-    if (!currentTab || !currentTab.url) return;
+    await doUngroup();
+  }
+});
 
-    try {
-      const urlObj = new URL(currentTab.url);
-      const urlsParam = urlObj.searchParams.get('urls');
-      if (urlsParam) {
-        const urls = urlsParam
-          .split(',')
-          .map((s) => decodeURIComponent(s))
-          .filter((u) => typeof u === 'string' && u.length > 0);
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command !== 'toggle-split-view') return;
 
-        const baseIndex = (currentTab.index ?? 0) + 1;
-        const newTabs = await Promise.all(
-          urls.map((u) =>
-            chrome.tabs.create({
-              url: u,
-              windowId: currentTab.windowId,
-            }),
-          ),
-        );
+  const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
+  const isSplitPage = tab && tab.url && tab.url.startsWith(splitBaseUrl);
 
-        const newTabIds = newTabs
-          .map((tab) => tab.id)
-          .filter((id) => typeof id === 'number');
-
-        if (newTabIds.length > 0) {
-          // If the split page was in a group, move the new tabs into that group.
-          if (
-            typeof currentTab.groupId === 'number' &&
-            currentTab.groupId > -1
-          ) {
-            for (const id of newTabIds) {
-              await chrome.tabs.group({
-                groupId: currentTab.groupId,
-                tabIds: id,
-              });
-            }
-          }
-          // Move the tabs to the desired position.
-          if (newTabIds.length === 1) {
-            await chrome.tabs.move(newTabIds[0], { index: baseIndex });
-          } else {
-            await chrome.tabs.move(newTabIds, { index: baseIndex });
-          }
-        }
-      }
-    } catch (unsplitErr) {
-      console.error('Failed to unsplit tabs:', unsplitErr);
-    }
-
-    if (typeof currentTab.id === 'number') {
-      try {
-        await chrome.tabs.remove(currentTab.id);
-      } catch (removeErr) {
-        console.error('Failed to close split tab:', removeErr);
-      }
-    }
+  if (isSplitPage) {
+    await doUngroup();
+  } else {
+    await doSplit(tab);
   }
 });
