@@ -58,17 +58,36 @@ document.addEventListener('DOMContentLoaded', () => {
           return;
         }
 
-        const search = new URL(tabUrl).search || '';
+        const u = new URL(tabUrl);
+        const stateParam = u.searchParams.get('state');
+        const legacy = u.search;
 
         // Collect iframe titles from the split page (ordered)
         const titles =
           typeof tab.id === 'number' ? await collectIframeTitles(tab) : [];
 
-        const urlObj = new URL(
-          `https://riiiiiiiiiina0.github.io/sandwich/g.html${search}`,
-        );
-        // Append title param as JSON string
-        urlObj.searchParams.set('title', JSON.stringify({ titles }));
+        const info = await chrome.management.getSelf();
+        const isDev = info.installType === 'development';
+
+        const baseUrl = isDev
+          ? chrome.runtime.getURL('docs/g.html')
+          : 'https://riiiiiiiiiina0.github.io/sandwich/g.html';
+        const urlObj = new URL(`${baseUrl}${legacy}`);
+        // Prefer state param; if present, merge in titles. Else, add standalone titles for legacy
+        if (stateParam) {
+          try {
+            const s = JSON.parse(stateParam);
+            s.titles = titles;
+            urlObj.searchParams.set('state', JSON.stringify(s));
+            urlObj.searchParams.delete('title');
+            urlObj.searchParams.delete('titles');
+          } catch (_e) {
+            urlObj.searchParams.set('title', JSON.stringify({ titles }));
+          }
+        } else {
+          // Legacy share: add ?title=
+          urlObj.searchParams.set('title', JSON.stringify({ titles }));
+        }
         const shareUrl = urlObj.toString();
         await writeToClipboard(shareUrl);
         await temporarilySetLabel(copyLinkBtn, 'Copied', originalLabel);
@@ -122,12 +141,10 @@ async function collectIframeTitles(tab) {
     let orderedFromParam = [];
     try {
       const u = new URL(tabUrl);
-      const urlsParam = u.searchParams.get('urls');
-      if (urlsParam) {
-        orderedFromParam = urlsParam
-          .split(',')
-          .map((s) => decodeURIComponent(s))
-          .filter(Boolean);
+      const stateParam = u.searchParams.get('state');
+      if (stateParam) {
+        const s = JSON.parse(stateParam);
+        orderedFromParam = s.urls;
       }
     } catch (_e) {}
 

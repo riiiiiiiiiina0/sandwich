@@ -103,29 +103,43 @@ document.addEventListener('DOMContentLoaded', () => {
   appState.setContainer(iframeContainer);
 
   const urlParams = new URLSearchParams(window.location.search);
-  const urlsParam = urlParams.get('urls');
-  const ratiosParam = urlParams.get('ratios');
-  const layoutParam = urlParams.get('layout');
-
-  // Accept 'horizontal' | 'vertical' | 'grid' for layout; fallback to old boolean param
-  if (
-    layoutParam === 'horizontal' ||
-    layoutParam === 'vertical' ||
-    layoutParam === 'grid'
-  ) {
-    appState.setLayoutMode(layoutParam);
-  } else {
-    appState.setVerticalLayout(layoutParam === 'vertical');
+  const stateParam = urlParams.get('state');
+  /** @type {{urls?: string[]; ratios?: number[]; layout?: 'horizontal'|'vertical'|'grid'; titles?: string[]}|null} */
+  let parsedState = null;
+  try {
+    if (stateParam) parsedState = JSON.parse(stateParam);
+  } catch (_e) {
+    parsedState = null;
   }
 
-  if (!urlsParam) return;
+  /** @type {string[]} */
+  let urls = Array.isArray(parsedState?.urls)
+    ? parsedState.urls.map((u) => String(u))
+    : [];
 
-  const urls = urlsParam.split(',').map((url) => decodeURIComponent(url));
+  /** @type {number[]} */
+  let ratios = Array.isArray(parsedState?.ratios)
+    ? parsedState.ratios.map((r) => Number(r))
+    : [];
+
+  /** @type {'horizontal'|'vertical'|'grid'|null} */
+  let layout =
+    parsedState &&
+    (parsedState.layout === 'horizontal' ||
+      parsedState.layout === 'vertical' ||
+      parsedState.layout === 'grid')
+      ? parsedState.layout
+      : null;
+
+  if (layout) {
+    appState.setLayoutMode(layout);
+  }
+
+  if (!urls || urls.length === 0) return;
+
   const numIframes = urls.length;
 
-  let ratios;
-  if (ratiosParam) {
-    ratios = ratiosParam.split(',').map((ratio) => parseFloat(ratio));
+  if (ratios && ratios.length > 0) {
     const totalRatio = ratios.reduce((sum, ratio) => sum + ratio, 0);
     if (
       ratios.length !== numIframes ||
@@ -139,7 +153,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // If exactly four urls and no explicit layout specified, default to grid
-  if (!layoutParam && urls && urls.length === 4) {
+  if (!layout && urls && urls.length === 4) {
     appState.setLayoutMode('grid');
   }
 

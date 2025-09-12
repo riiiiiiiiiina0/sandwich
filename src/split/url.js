@@ -35,12 +35,42 @@ export const updateUrlWithState = () => {
     return (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
   });
 
+  // Derive titles from iframes (prefer data attribute, then hostname, else raw src)
+  const titles = wrappersSorted.map((wrapper) => {
+    const iframe = /** @type {HTMLIFrameElement | null} */ (
+      wrapper.querySelector('iframe')
+    );
+    if (!iframe) return '';
+    const dataTitle = iframe.getAttribute('data-sb-title');
+    if (dataTitle && dataTitle.trim()) return dataTitle.trim();
+    const src =
+      (iframe.getAttribute('data-sb-current-url') ||
+        iframe.getAttribute('src') ||
+        iframe.src ||
+        '') + '';
+    try {
+      const u = new URL(src);
+      return u.hostname || src;
+    } catch (_e) {
+      return src || '';
+    }
+  });
+
+  const state = {
+    urls: currentUrls,
+    ratios: currentRatios.map((r) => Number(r)),
+    layout: mode,
+    titles,
+  };
+
   const newUrl = new URL(window.location.href);
-  newUrl.searchParams.set(
-    'urls',
-    currentUrls.map((u) => encodeURIComponent(u)).join(','),
-  );
-  newUrl.searchParams.set('ratios', currentRatios.join(','));
-  newUrl.searchParams.set('layout', mode);
+  // Remove legacy params
+  newUrl.searchParams.delete('urls');
+  newUrl.searchParams.delete('ratios');
+  newUrl.searchParams.delete('layout');
+  newUrl.searchParams.delete('title');
+  newUrl.searchParams.delete('titles');
+  // Write single JSON state param
+  newUrl.searchParams.set('state', JSON.stringify(state));
   window.history.replaceState({}, '', newUrl.toString());
 };

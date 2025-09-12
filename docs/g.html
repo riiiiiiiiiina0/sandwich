@@ -22,76 +22,7 @@
     <div id="preview"></div>
   </div>
 
-  <script>
-    // get urls and titles from url search params
-    const search = new URLSearchParams(location.search);
-    // urls: comma-joined list of encodeURIComponent(url)
-    const urlsParam = search.get('urls') || '';
-    const urls = urlsParam
-      ? urlsParam
-        .split(',')
-        .map((s) => decodeURIComponent(s))
-        .filter(Boolean)
-      : [];
-
-    // layout: 'horizontal' | 'vertical' | 'grid'
-    const layoutParam = search.get('layout');
-    const layout =
-      layoutParam === 'horizontal' ||
-        layoutParam === 'vertical' ||
-        layoutParam === 'grid'
-        ? layoutParam
-        : null;
-
-    // titles: support both ?titles=... and ?title={"titles":[...]}
-    const parseTitles = (value) => {
-      if (!value) return null;
-      try {
-        const parsed = JSON.parse(value);
-        if (Array.isArray(parsed)) return parsed.map((x) => String(x));
-        if (parsed && Array.isArray(parsed.titles))
-          return parsed.titles.map((x) => String(x));
-      } catch (_e) {
-        // Fallback: CSV
-      }
-      return value
-        .split(',')
-        .map((s) => decodeURIComponent(s))
-        .filter(Boolean);
-    };
-    const titles =
-      parseTitles(search.get('titles')) ||
-      parseTitles(search.get('title')) ||
-      [];
-
-    // For now, just expose in console for inspection
-    console.log('data:', { urls, layout, titles });
-
-    // Check if extension is installed
-    let isInstalled = false;
-    const extensionId = "ajlaaeahbfobidnkjlmbnhhdpnhghnnk";
-    if ('chrome' in window && chrome.runtime?.sendMessage) {
-      chrome.runtime.sendMessage(extensionId, { message: "isInstalled" }, (response) => {
-        if (response && response.status === "installed") {
-          console.log("Extension is installed!");
-          isInstalled = true;
-        } else {
-          console.log("Extension is not installed.");
-        }
-      });
-    } else {
-      console.log("Extension is not installed. (chrome api not available)");
-    }
-    console.log('isInstalled:', isInstalled);
-
-    if (urls.length > 0 && isInstalled) {
-      const l = layout || 'horizontal';
-      const r = ratios?.length > 0 ? ratios.join(',') : (1 / urls.length).toFixed(1).repeat(urls.length).join(',');
-      const splitPageUrl = `chrome-extension://${extensionId}/src/split.html?urls=${urls.map((u) => encodeURIComponent(u)).join(',')}&ratios=${r}&layout=${l}`;
-      location.href = splitPageUrl;
-    }
-
-  </script>
+  <script src="g.js"></script>
 </body>
 
 </html>

@@ -6,8 +6,19 @@ const injectWindowSpoofing = async (tabId, frameId) => {
       target: { tabId, frameIds: [frameId] },
       world: 'MAIN',
       injectImmediately: true,
-      func: () => {
+      // @ts-ignore - 'args' is supported in MV3 executeScript; types may be outdated
+      args: [chrome.runtime.id],
+      func: (extensionId) => {
         try {
+          if (!window['__SANDWICH_BEAR_EXTENSION_ID']) {
+            Object.defineProperty(window, '__SANDWICH_BEAR_EXTENSION_ID', {
+              value: String(extensionId),
+              configurable: false,
+              enumerable: false,
+              writable: false,
+            });
+          }
+
           const originalStop = window.stop;
           const originalWrite = document.write;
           window.stop = () => {
@@ -19,7 +30,9 @@ const injectWindowSpoofing = async (tabId, frameId) => {
             originalWrite(content);
           };
           console.log('window-spoofing loaded');
-        } catch (_e) {}
+        } catch (e) {
+          console.log('[sandwich-bear] Failed to inject window spoofing:', e);
+        }
       },
     });
   } catch (e) {
@@ -129,10 +142,14 @@ const updateContextMenuVisibility = async (tab) => {
   if (isSplitPage) {
     try {
       const urlObj = new URL(tab.url);
-      const urlsParam = urlObj.searchParams.get('urls');
-      const count = urlsParam
-        ? urlsParam.split(',').filter((u) => u).length
-        : 0;
+      let count = 0;
+      const stateParam = urlObj.searchParams.get('state');
+      if (stateParam) {
+        try {
+          const s = JSON.parse(stateParam);
+          if (s && Array.isArray(s.urls)) count = s.urls.length;
+        } catch (_e) {}
+      }
       if (count >= 4) {
         showRightMenu = false;
       }
@@ -165,9 +182,12 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (!tab || typeof tab.url !== 'string') return;
     const currentUrl = tab.url;
     const linkUrl = info.linkUrl ?? '';
+    const state = {
+      urls: [currentUrl, linkUrl],
+    };
     const splitUrl = `${chrome.runtime.getURL(
       'src/split.html',
-    )}?urls=${encodeURIComponent(currentUrl)},${encodeURIComponent(linkUrl)}`;
+    )}?state=${encodeURIComponent(JSON.stringify(state))}`;
     const createOpts = { url: splitUrl };
     if (typeof tab.index === 'number') {
       // place new tab to the right if we know the index
@@ -287,13 +307,12 @@ const doSplit = async (currentTab) => {
       return;
     }
 
-    const urlsParam = httpTabs
-      .map((t) => encodeURIComponent(String(t.url)))
-      .join(',');
-
+    const state = {
+      urls: httpTabs.map((t) => String(t.url)),
+    };
     const splitUrl = `${chrome.runtime.getURL(
       'src/split.html',
-    )}?urls=${urlsParam}`;
+    )}?state=${encodeURIComponent(JSON.stringify(state))}`;
 
     // Create the new split tab at the position of the first of the highlighted tabs,
     // and in the same tab group if they are in one.
@@ -342,43 +361,46 @@ const doUngroup = async () => {
 
   try {
     const urlObj = new URL(currentTab.url);
-    const urlsParam = urlObj.searchParams.get('urls');
-    if (urlsParam) {
-      const urls = urlsParam
-        .split(',')
-        .map((s) => decodeURIComponent(s))
-        .filter((u) => typeof u === 'string' && u.length > 0);
-
-      const baseIndex = (currentTab.index ?? 0) + 1;
-      const newTabs = await Promise.all(
-        urls.map((u) =>
-          chrome.tabs.create({
-            url: u,
-            windowId: currentTab.windowId,
-          }),
-        ),
-      );
-
-      const newTabIds = newTabs
-        .map((tab) => tab.id)
-        .filter((id) => typeof id === 'number');
-
-      if (newTabIds.length > 0) {
-        // If the split page was in a group, move the new tabs into that group.
-        if (typeof currentTab.groupId === 'number' && currentTab.groupId > -1) {
-          for (const id of newTabIds) {
-            await chrome.tabs.group({
-              groupId: currentTab.groupId,
-              tabIds: id,
-            });
-          }
+    let urls = [];
+    const stateParam = urlObj.searchParams.get('state');
+    if (stateParam) {
+      try {
+        const s = JSON.parse(stateParam);
+        if (s && Array.isArray(s.urls)) {
+          urls = s.urls.filter((u) => typeof u === 'string' && u.length > 0);
         }
-        // Move the tabs to the desired position.
-        if (newTabIds.length === 1) {
-          await chrome.tabs.move(newTabIds[0], { index: baseIndex });
-        } else {
-          await chrome.tabs.move(newTabIds, { index: baseIndex });
+      } catch (_e) {}
+    }
+
+    const baseIndex = (currentTab.index ?? 0) + 1;
+    const newTabs = await Promise.all(
+      urls.map((u) =>
+        chrome.tabs.create({
+          url: u,
+          windowId: currentTab.windowId,
+        }),
+      ),
+    );
+
+    const newTabIds = newTabs
+      .map((tab) => tab.id)
+      .filter((id) => typeof id === 'number');
+
+    if (newTabIds.length > 0) {
+      // If the split page was in a group, move the new tabs into that group.
+      if (typeof currentTab.groupId === 'number' && currentTab.groupId > -1) {
+        for (const id of newTabIds) {
+          await chrome.tabs.group({
+            groupId: currentTab.groupId,
+            tabIds: id,
+          });
         }
+      }
+      // Move the tabs to the desired position.
+      if (newTabIds.length === 1) {
+        await chrome.tabs.move(newTabIds[0], { index: baseIndex });
+      } else {
+        await chrome.tabs.move(newTabIds, { index: baseIndex });
       }
     }
   } catch (unsplitErr) {
