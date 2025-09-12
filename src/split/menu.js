@@ -1,5 +1,5 @@
 import { appState } from './state.js';
-import { heroicons } from '../shared/heroicons.js';
+import { heroicons } from '../../pages/shared/heroicons.js';
 import {
   toggleLayout,
   setLayoutToGrid,
@@ -81,7 +81,9 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     menu.appendChild(layoutBtn);
   }
 
-  const fullPageBtn = document.createElement('button');
+  const fullPageBtn = /** @type {HTMLButtonElement} */ (
+    document.createElement('button')
+  );
   fullPageBtn.className =
     'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
   fullPageBtn.dataset.role = 'full-page';
@@ -92,13 +94,13 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
       collapseIframe(iframeWrapper);
       fullPageBtn.replaceChild(
         createHeroicon('pointingOut'),
-        fullPageBtn.firstChild,
+        /** @type {Node} */ (fullPageBtn.firstChild),
       );
     } else {
       expandIframe(iframeWrapper);
       fullPageBtn.replaceChild(
         createHeroicon('pointingIn'),
-        fullPageBtn.firstChild,
+        /** @type {Node} */ (fullPageBtn.firstChild),
       );
     }
     menu.childNodes.forEach((node) => {

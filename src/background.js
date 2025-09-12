@@ -122,7 +122,7 @@ chrome.webNavigation.onBeforeNavigate.addListener(
 );
 
 const updateContextMenuVisibility = async (tab) => {
-  const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
+  const splitBaseUrl = chrome.runtime.getURL('src/split.html');
   const isSplitPage = tab && tab.url && tab.url.startsWith(splitBaseUrl);
 
   let showRightMenu = isSplitPage;
@@ -166,7 +166,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     const currentUrl = tab.url;
     const linkUrl = info.linkUrl ?? '';
     const splitUrl = `${chrome.runtime.getURL(
-      'pages/split.html',
+      'src/split.html',
     )}?urls=${encodeURIComponent(currentUrl)},${encodeURIComponent(linkUrl)}`;
     const createOpts = { url: splitUrl };
     if (typeof tab.index === 'number') {
@@ -197,7 +197,7 @@ const updateAction = async () => {
     });
     if (!activeTab || typeof activeTab.id !== 'number') return;
 
-    const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
+    const splitBaseUrl = chrome.runtime.getURL('src/split.html');
     let title = 'Sandwich Bear';
 
     if (
@@ -208,7 +208,7 @@ const updateAction = async () => {
       title = 'Page Controls';
       await chrome.action.setPopup({
         tabId: activeTab.id,
-        popup: 'pages/action/popup.html',
+        popup: 'src/action/popup.html',
       });
     } else {
       // Not on split page: show Open {N (2<=N<=4)} tabs in split view
@@ -292,7 +292,7 @@ const doSplit = async (currentTab) => {
       .join(',');
 
     const splitUrl = `${chrome.runtime.getURL(
-      'pages/split.html',
+      'src/split.html',
     )}?urls=${urlsParam}`;
 
     // Create the new split tab at the position of the first of the highlighted tabs,
@@ -365,10 +365,7 @@ const doUngroup = async () => {
 
       if (newTabIds.length > 0) {
         // If the split page was in a group, move the new tabs into that group.
-        if (
-          typeof currentTab.groupId === 'number' &&
-          currentTab.groupId > -1
-        ) {
+        if (typeof currentTab.groupId === 'number' && currentTab.groupId > -1) {
           for (const id of newTabIds) {
             await chrome.tabs.group({
               groupId: currentTab.groupId,
@@ -413,7 +410,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
 chrome.commands.onCommand.addListener(async (command, tab) => {
   if (command !== 'toggle-split-view') return;
 
-  const splitBaseUrl = chrome.runtime.getURL('pages/split.html');
+  const splitBaseUrl = chrome.runtime.getURL('src/split.html');
   const isSplitPage = tab && tab.url && tab.url.startsWith(splitBaseUrl);
 
   if (isSplitPage) {
