@@ -15,8 +15,8 @@
   "commands": {
     "toggle-split-view": {
       "suggested_key": {
-        "default": "Ctrl+Comma",
-        "mac": "Command+Comma"
+        "default": "Ctrl+S",
+        "mac": "Command+S"
       },
       "description": "Create split page from highlighted tabs, or ungroup iframes in split page into browser tabs"
     }
