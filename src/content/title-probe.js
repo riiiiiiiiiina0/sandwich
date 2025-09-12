@@ -101,3 +101,31 @@
   console.log(`[title-probe (${location.href})] loaded`);
   key = location.href;
 })();
+
+// Respond to title requests from the extension
+try {
+  if (
+    typeof chrome !== 'undefined' &&
+    chrome.runtime &&
+    chrome.runtime.onMessage
+  ) {
+    chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+      try {
+        if (message && message.action === 'sb:get-title') {
+          sendResponse({
+            title: document.title || '',
+            url: location.href || '',
+          });
+        }
+      } catch (_e) {
+        try {
+          sendResponse({ title: '', url: location.href || '' });
+        } catch (_e2) {}
+      }
+      // synchronous response
+      return false;
+    });
+  }
+} catch (_e) {
+  // no-op
+}

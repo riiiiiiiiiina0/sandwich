@@ -18,7 +18,55 @@
     <p class="text-gray-500 dark:text-gray-400">Please install me from <a
         href="https://chromewebstore.google.com/detail/sandwich-bear/ajlaaeahbfobidnkjlmbnhhdpnhghnnk?authuser=0&hl=en"
         class="text-blue-600 dark:text-blue-400" target="_blank">Chrome Web Store</a> before using me.</p>
+
+    <div id="preview"></div>
   </div>
+
+  <script>
+    // get urls and titles from url search params
+    const search = new URLSearchParams(location.search);
+    // urls: comma-joined list of encodeURIComponent(url)
+    const urlsParam = search.get('urls') || '';
+    const urls = urlsParam
+      ? urlsParam
+        .split(',')
+        .map((s) => decodeURIComponent(s))
+        .filter(Boolean)
+      : [];
+
+    // layout: 'horizontal' | 'vertical' | 'grid'
+    const layoutParam = search.get('layout');
+    const layout =
+      layoutParam === 'horizontal' ||
+        layoutParam === 'vertical' ||
+        layoutParam === 'grid'
+        ? layoutParam
+        : null;
+
+    // titles: support both ?titles=... and ?title={"titles":[...]}
+    const parseTitles = (value) => {
+      if (!value) return null;
+      try {
+        const parsed = JSON.parse(value);
+        if (Array.isArray(parsed)) return parsed.map((x) => String(x));
+        if (parsed && Array.isArray(parsed.titles))
+          return parsed.titles.map((x) => String(x));
+      } catch (_e) {
+        // Fallback: CSV
+      }
+      return value
+        .split(',')
+        .map((s) => decodeURIComponent(s))
+        .filter(Boolean);
+    };
+    const titles =
+      parseTitles(search.get('titles')) ||
+      parseTitles(search.get('title')) ||
+      [];
+
+    // For now, just expose in console for inspection
+    console.log({ urls, layout, titles });
+  </script>
 </body>
 
 </html>

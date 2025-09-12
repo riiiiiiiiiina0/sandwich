@@ -23,6 +23,7 @@
   },
   "permissions": [
     "tabs",
+    "clipboardWrite",
     "declarativeNetRequest",
     "contextMenus",
     "scripting",
