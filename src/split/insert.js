@@ -297,7 +297,6 @@ export const insertAtDivider = (divider, url) => {
     const newRatio = 100 / allWrappers.length;
     allWrappers.forEach((w) => {
       /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
-      applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
     });
 
     // Recreate menus and normalize order/url
@@ -418,7 +417,6 @@ export const insertAtEdge = (position, url) => {
     const newRatio = 100 / allWrappers.length;
     allWrappers.forEach((w) => {
       /** @type {HTMLElement} */ (w).dataset.ratio = String(newRatio);
-      applyWrapperPrimarySize(w, newRatio, isVerticalLayout, iframeContainer);
     });
 
     rebuildInterface();
