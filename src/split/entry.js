@@ -292,6 +292,14 @@ document.addEventListener('DOMContentLoaded', () => {
     );
     if (!wrapper) return;
 
+    // In full-page mode, ignore move-left/move-right actions
+    if (
+      isFullPage(wrapper) &&
+      (action === 'move-left' || action === 'move-right')
+    ) {
+      return;
+    }
+
     const iframeContainer = appState.getContainer();
     const wrappers = /** @type {HTMLDivElement[]} */ (
       Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
@@ -388,6 +396,13 @@ document.addEventListener('DOMContentLoaded', () => {
       // Delegate to shared handler
       const k = String(e.key || '').toLowerCase();
       if (!['a', 'd', 'e', 'x', 'f'].includes(k)) return;
+      // If in full-page mode, do nothing for A/D (move) and don't intercept
+      const wrapper = /** @type {HTMLDivElement|null} */ (
+        active.closest('.iframe-wrapper')
+      );
+      if (wrapper && isFullPage(wrapper) && (k === 'a' || k === 'd')) {
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       if (k === 'a') handleShortcutForIframe(active, 'move-left');

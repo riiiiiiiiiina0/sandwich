@@ -105,10 +105,33 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     document.createElement('button')
   );
   fullPageBtn.className =
-    'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
+    'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none relative';
   fullPageBtn.dataset.role = 'full-page';
   fullPageBtn.appendChild(createHeroicon('pointingOut'));
-  fullPageBtn.title = 'Full page (Alt+F)';
+  fullPageBtn.title = 'Full screen (Alt+F)';
+
+  // Small badge showing total iframes when in full-page
+  const fullPageCountBadge = document.createElement('span');
+  fullPageCountBadge.className =
+    'sb-badge-count badge badge-xs absolute -bottom-2 -right-1 p-0 size-4 leading-4 hidden';
+  fullPageBtn.appendChild(fullPageCountBadge);
+
+  /**
+   * Update the badge count and visibility for full-page state
+   * @param {HTMLDivElement} wrapper
+   */
+  const updateFullPageBadge = (wrapper) => {
+    try {
+      const container = appState.getContainer();
+      const count = container.querySelectorAll('.iframe-wrapper').length;
+      fullPageCountBadge.textContent = String(count);
+      const show = isFullPage(wrapper);
+      if (show) fullPageCountBadge.classList.remove('hidden');
+      else fullPageCountBadge.classList.add('hidden');
+    } catch (_e) {
+      // no-op
+    }
+  };
   fullPageBtn.addEventListener('click', () => {
     if (isFullPage(iframeWrapper)) {
       collapseIframe(iframeWrapper);
@@ -116,14 +139,17 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
         createHeroicon('pointingOut'),
         /** @type {Node} */ (fullPageBtn.firstChild),
       );
+      fullPageBtn.title = 'Full screen (Alt+F)';
     } else {
       expandIframe(iframeWrapper);
       fullPageBtn.replaceChild(
         createHeroicon('pointingIn'),
         /** @type {Node} */ (fullPageBtn.firstChild),
       );
+      fullPageBtn.title = 'Quit full screen (Alt+F)';
     }
     updateMenuButtonsForFullPage(iframeWrapper);
+    updateFullPageBadge(iframeWrapper);
   });
   menu.appendChild(fullPageBtn);
 
@@ -285,6 +311,11 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     }
   });
   menu.appendChild(detachBtn);
+
+  // Initialize badge visibility on create
+  try {
+    updateFullPageBadge(iframeWrapper);
+  } catch (_e) {}
 
   return menu;
 };
