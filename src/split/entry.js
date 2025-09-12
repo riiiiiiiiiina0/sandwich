@@ -318,6 +318,15 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (action === 'detach-iframe') {
+      const wrapper = /** @type {HTMLDivElement|null} */ (
+        iframe.closest('.iframe-wrapper')
+      );
+      if (wrapper) {
+        const fullBtn = /** @type {HTMLButtonElement|null} */ (
+          wrapper.querySelector('.iframe-menu [data-role="full-page"]')
+        );
+        if (fullBtn && isFullPage(wrapper)) fullBtn.click();
+      }
       const liveSrc = iframe.getAttribute('data-sb-current-url');
       const originalSrc = iframe.getAttribute('src');
       const url =
@@ -331,14 +340,30 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
     if (action === 'remove-iframe') {
+      const wrapper = /** @type {HTMLDivElement|null} */ (
+        iframe.closest('.iframe-wrapper')
+      );
+      if (wrapper) {
+        const fullBtn = /** @type {HTMLButtonElement|null} */ (
+          wrapper.querySelector('.iframe-menu [data-role="full-page"]')
+        );
+        if (fullBtn && isFullPage(wrapper)) fullBtn.click();
+      }
       removeIframe(index);
       return;
     }
     if (action === 'toggle-full-page') {
-      if (isFullPage(wrapper)) {
-        collapseIframe(wrapper);
+      const fullBtn = /** @type {HTMLButtonElement|null} */ (
+        wrapper.querySelector('.iframe-menu [data-role="full-page"]')
+      );
+      if (fullBtn && typeof fullBtn.click === 'function') {
+        fullBtn.click();
       } else {
-        expandIframe(wrapper);
+        if (isFullPage(wrapper)) {
+          collapseIframe(wrapper);
+        } else {
+          expandIframe(wrapper);
+        }
       }
       return;
     }

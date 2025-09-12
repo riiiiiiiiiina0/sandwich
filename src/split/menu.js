@@ -33,6 +33,26 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     return svg;
   };
 
+  /**
+   * Update visibility of menu buttons depending on full-page state
+   * @param {HTMLDivElement} wrapper
+   */
+  const updateMenuButtonsForFullPage = (wrapper) => {
+    menu.childNodes.forEach((node) => {
+      const button = /** @type {HTMLButtonElement} */ (node);
+      if (
+        button.dataset.role === 'layout' ||
+        button.dataset.role === 'move-left' ||
+        button.dataset.role === 'move-right' ||
+        button.dataset.role === 'grid' ||
+        button.dataset.role === 'to-horizontal' ||
+        button.dataset.role === 'to-vertical'
+      ) {
+        button.style.display = isFullPage(wrapper) ? 'none' : '';
+      }
+    });
+  };
+
   if (isGridLayout) {
     // In grid, show explicit Horizontal and Vertical buttons
     const toHorizontalBtn = document.createElement('button');
@@ -88,7 +108,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
   fullPageBtn.dataset.role = 'full-page';
   fullPageBtn.appendChild(createHeroicon('pointingOut'));
-  fullPageBtn.title = 'Full page';
+  fullPageBtn.title = 'Full page (Alt+F)';
   fullPageBtn.addEventListener('click', () => {
     if (isFullPage(iframeWrapper)) {
       collapseIframe(iframeWrapper);
@@ -103,19 +123,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
         /** @type {Node} */ (fullPageBtn.firstChild),
       );
     }
-    menu.childNodes.forEach((node) => {
-      const button = /** @type {HTMLButtonElement} */ (node);
-      if (
-        button.dataset.role === 'layout' ||
-        button.dataset.role === 'move-left' ||
-        button.dataset.role === 'move-right' ||
-        button.dataset.role === 'grid' ||
-        button.dataset.role === 'to-horizontal' ||
-        button.dataset.role === 'to-vertical'
-      ) {
-        button.style.display = isFullPage(iframeWrapper) ? 'none' : '';
-      }
-    });
+    updateMenuButtonsForFullPage(iframeWrapper);
   });
   menu.appendChild(fullPageBtn);
 
@@ -126,9 +134,6 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
   reloadBtn.appendChild(createHeroicon('reload'));
   reloadBtn.title = 'Reload';
   reloadBtn.addEventListener('click', () => {
-    if (isFullPage(iframeWrapper)) {
-      collapseIframe(iframeWrapper);
-    }
     const iframe = /** @type {HTMLIFrameElement|null} */ (
       iframeWrapper.querySelector('iframe')
     );
@@ -156,9 +161,6 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
   backBtn.appendChild(createHeroicon('back'));
   backBtn.title = 'Back';
   backBtn.addEventListener('click', () => {
-    if (isFullPage(iframeWrapper)) {
-      collapseIframe(iframeWrapper);
-    }
     const iframe = /** @type {HTMLIFrameElement|null} */ (
       iframeWrapper.querySelector('iframe')
     );
@@ -190,7 +192,8 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     const extraRotation = isVerticalLayout ? 90 : 0;
     moveLeftIcon.style.transform = `rotate(${baseRotation + extraRotation}deg)`;
     moveLeftBtn.appendChild(moveLeftIcon);
-    moveLeftBtn.title = isVerticalLayout ? 'Move up' : 'Move left';
+    moveLeftBtn.title =
+      (isVerticalLayout ? 'Move up' : 'Move left') + ' (Alt+A)';
     moveLeftBtn.addEventListener('click', () => {
       if (isFullPage(iframeWrapper)) {
         collapseIframe(iframeWrapper);
@@ -215,7 +218,8 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
       baseRotationR + extraRotationR
     }deg)`;
     moveRightBtn.appendChild(moveRightIcon);
-    moveRightBtn.title = isVerticalLayout ? 'Move down' : 'Move right';
+    moveRightBtn.title =
+      (isVerticalLayout ? 'Move down' : 'Move right') + ' (Alt+D)';
     moveRightBtn.addEventListener('click', () => {
       if (isFullPage(iframeWrapper)) {
         collapseIframe(iframeWrapper);
@@ -230,10 +234,15 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     'btn btn-xs btn-ghost hover:btn-error min-w-6 h-6 text-xs leading-none';
   removeBtn.dataset.role = 'remove';
   removeBtn.appendChild(createHeroicon('close'));
-  removeBtn.title = 'Remove';
+  removeBtn.title = 'Remove (Alt+X)';
   removeBtn.addEventListener('click', () => {
     if (isFullPage(iframeWrapper)) {
-      collapseIframe(iframeWrapper);
+      // Mirror full-page button behavior to update icon and menu
+      const btn = /** @type {HTMLButtonElement|null} */ (
+        menu.querySelector('[data-role="full-page"]')
+      );
+      if (btn && typeof btn.click === 'function') btn.click();
+      else collapseIframe(iframeWrapper);
     }
     removeIframe(index);
   });
@@ -245,10 +254,15 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
   detachBtn.dataset.role = 'detach';
   detachBtn.appendChild(createHeroicon('openInNewTab'));
-  detachBtn.title = 'Open in new tab';
+  detachBtn.title = 'Open in new tab (Alt+E)';
   detachBtn.addEventListener('click', async () => {
     if (isFullPage(iframeWrapper)) {
-      collapseIframe(iframeWrapper);
+      // Mirror full-page button behavior to update icon and menu
+      const btn = /** @type {HTMLButtonElement|null} */ (
+        menu.querySelector('[data-role="full-page"]')
+      );
+      if (btn && typeof btn.click === 'function') btn.click();
+      else collapseIframe(iframeWrapper);
     }
     try {
       const iframe = /** @type {HTMLIFrameElement|null} */ (
