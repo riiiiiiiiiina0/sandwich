@@ -28,6 +28,7 @@ import {
 import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
+import { createUrlDisplay } from './url-display.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   startContentTitleBridge();
@@ -246,6 +247,7 @@ document.addEventListener('DOMContentLoaded', () => {
     iframeWrapper.appendChild(iframe);
     attachActiveHoverListener(iframe);
     attachIframeTitleListener(iframe);
+    createUrlDisplay(iframe);
 
     const menu = createIframeMenu(iframeWrapper, index, urls.length);
     iframeWrapper.appendChild(menu);

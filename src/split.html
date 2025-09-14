@@ -33,6 +33,26 @@
       height: 100vh !important;
       z-index: 20 !important;
     }
+
+    .iframe-url-display {
+      position: absolute;
+      bottom: 1rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background-color: rgba(0, 0, 0, 0.5);
+      color: white;
+      font-size: 0.75rem;
+      border-radius: 9999px;
+      padding: 0.25rem 0.75rem;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.3s;
+      white-space: nowrap;
+      max-width: 80%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
   </style>
 </head>
 
