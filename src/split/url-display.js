@@ -21,16 +21,26 @@ export function createUrlDisplay(iframe) {
   urlDisplay.textContent = getIframeUrl();
   wrapper.appendChild(urlDisplay);
 
-  wrapper.addEventListener('mouseenter', () => {
+  let hideTimeout;
+
+  const showUrlDisplay = () => {
+    clearTimeout(hideTimeout);
     urlDisplay.textContent = getIframeUrl();
     urlDisplay.style.opacity = '1';
     urlDisplay.style.pointerEvents = 'auto';
-  });
+  };
 
-  wrapper.addEventListener('mouseleave', () => {
-    urlDisplay.style.opacity = '0';
-    urlDisplay.style.pointerEvents = 'none';
-  });
+  const hideUrlDisplay = () => {
+    hideTimeout = setTimeout(() => {
+      urlDisplay.style.opacity = '0';
+      urlDisplay.style.pointerEvents = 'none';
+    }, 200);
+  };
+
+  wrapper.addEventListener('mouseenter', showUrlDisplay);
+  wrapper.addEventListener('mouseleave', hideUrlDisplay);
+  urlDisplay.addEventListener('mouseenter', showUrlDisplay);
+  urlDisplay.addEventListener('mouseleave', hideUrlDisplay);
 
   urlDisplay.addEventListener('click', async () => {
     try {
