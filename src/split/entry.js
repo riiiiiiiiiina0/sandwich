@@ -29,8 +29,10 @@ import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
 import { createUrlDisplay } from './url-display.js';
+import { isMac } from '../shared/platform.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  const mac = isMac();
   startContentTitleBridge();
 
   chrome.runtime.onMessage.addListener((message, sender) => {
@@ -105,7 +107,8 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (message.action === 'sb:key') {
       // Handle forwarded key events from iframes
       const k = String(message.key || '').toLowerCase();
-      if (!message.altKey) return;
+      const modKey = mac ? message.metaKey : message.altKey;
+      if (!modKey) return;
       if (!['a', 'd', 'e', 'x', 'f'].includes(k)) return;
 
       // Resolve the iframe from sender.frameId or message.frameName
@@ -382,7 +385,8 @@ document.addEventListener('DOMContentLoaded', () => {
   // Keyboard shortcuts acting on the active iframe
   document.addEventListener('keydown', async (e) => {
     try {
-      if (!e.altKey) return;
+      const modKey = mac ? e.metaKey : e.altKey;
+      if (!modKey) return;
       const target = /** @type {HTMLElement} */ (e.target);
       const tag = (target && target.tagName) || '';
       if (
