@@ -9,11 +9,8 @@ import {
 import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
-import { isMac } from '../shared/platform.js';
 
 export const createIframeMenu = (iframeWrapper, index, totalCount) => {
-  const mac = isMac();
-  const modKey = mac ? 'Cmd' : 'Alt';
   const mode = appState.getLayoutMode();
   const isVerticalLayout = mode === 'vertical';
   const isGridLayout = mode === 'grid';
@@ -111,7 +108,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none relative';
   fullPageBtn.dataset.role = 'full-page';
   fullPageBtn.appendChild(createHeroicon('pointingOut'));
-  fullPageBtn.title = `Full screen (${modKey}+F)`;
+  fullPageBtn.title = 'Full screen (Alt+F)';
 
   // Small badge showing total iframes when in full-page
   const fullPageCountBadge = document.createElement('span');
@@ -142,14 +139,14 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
         createHeroicon('pointingOut'),
         /** @type {Node} */ (fullPageBtn.firstChild),
       );
-      fullPageBtn.title = `Full screen (${modKey}+F)`;
+      fullPageBtn.title = 'Full screen (Alt+F)';
     } else {
       expandIframe(iframeWrapper);
       fullPageBtn.replaceChild(
         createHeroicon('pointingIn'),
         /** @type {Node} */ (fullPageBtn.firstChild),
       );
-      fullPageBtn.title = `Quit full screen (${modKey}+F)`;
+      fullPageBtn.title = 'Quit full screen (Alt+F)';
     }
     updateMenuButtonsForFullPage(iframeWrapper);
     updateFullPageBadge(iframeWrapper);
@@ -222,7 +219,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     moveLeftIcon.style.transform = `rotate(${baseRotation + extraRotation}deg)`;
     moveLeftBtn.appendChild(moveLeftIcon);
     moveLeftBtn.title =
-      (isVerticalLayout ? 'Move up' : 'Move left') + ` (${modKey}+A)`;
+      (isVerticalLayout ? 'Move up' : 'Move left') + ' (Alt+A)';
     moveLeftBtn.addEventListener('click', () => {
       if (isFullPage(iframeWrapper)) {
         collapseIframe(iframeWrapper);
@@ -248,7 +245,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     }deg)`;
     moveRightBtn.appendChild(moveRightIcon);
     moveRightBtn.title =
-      (isVerticalLayout ? 'Move down' : 'Move right') + ` (${modKey}+D)`;
+      (isVerticalLayout ? 'Move down' : 'Move right') + ' (Alt+D)';
     moveRightBtn.addEventListener('click', () => {
       if (isFullPage(iframeWrapper)) {
         collapseIframe(iframeWrapper);
@@ -263,7 +260,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     'btn btn-xs btn-ghost hover:btn-error min-w-6 h-6 text-xs leading-none';
   removeBtn.dataset.role = 'remove';
   removeBtn.appendChild(createHeroicon('close'));
-  removeBtn.title = `Remove (${modKey}+X)`;
+  removeBtn.title = 'Remove (Alt+X)';
   removeBtn.addEventListener('click', () => {
     if (isFullPage(iframeWrapper)) {
       // Mirror full-page button behavior to update icon and menu
@@ -283,7 +280,7 @@ export const createIframeMenu = (iframeWrapper, index, totalCount) => {
     'btn btn-xs btn-ghost hover:btn-primary min-w-6 h-6 text-xs leading-none';
   detachBtn.dataset.role = 'detach';
   detachBtn.appendChild(createHeroicon('openInNewTab'));
-  detachBtn.title = `Open in new tab (${modKey}+E)`;
+  detachBtn.title = 'Open in new tab (Alt+E)';
   detachBtn.addEventListener('click', async () => {
     if (isFullPage(iframeWrapper)) {
       // Mirror full-page button behavior to update icon and menu
