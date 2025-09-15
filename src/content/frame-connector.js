@@ -22,11 +22,14 @@ try {
     'keydown',
     (e) => {
       try {
-        // Only care about Alt+A/D/E/X/F
+        // Only care about Alt+[key] shortcuts.
         if (!e.altKey) return;
-        const k = String(e.key || '').toLowerCase();
-        if (!['a', 'd', 'e', 'x', 'f'].includes(k)) return;
+        // Use `e.code` to check for physical keys, avoiding issues with macOS
+        // and special characters when Alt is pressed.
+        const validCodes = ['KeyA', 'KeyD', 'KeyE', 'KeyX', 'KeyF'];
+        if (!validCodes.includes(e.code)) return;
 
+        // Prevent the default action (e.g., typing 'ƒ' on macOS for Alt+F)
         e.preventDefault();
         e.stopPropagation();
 
@@ -41,10 +44,12 @@ try {
 
         chrome.runtime.sendMessage({
           action: 'sb:key',
-          key: k,
-          ctrlKey: !!e.ctrlKey,
-          altKey: !!e.altKey,
-          shiftKey: !!e.shiftKey,
+          key: e.key,
+          code: e.code,
+          ctrlKey: e.ctrlKey,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
+          shiftKey: e.shiftKey,
           frameName: window.name || '',
         });
       } catch (_e) {

@@ -104,9 +104,10 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     } else if (message.action === 'sb:key') {
       // Handle forwarded key events from iframes
-      const k = String(message.key || '').toLowerCase();
+      const code = message.code;
       if (!message.altKey) return;
-      if (!['a', 'd', 'e', 'x', 'f'].includes(k)) return;
+      const validCodes = ['KeyA', 'KeyD', 'KeyE', 'KeyX', 'KeyF'];
+      if (!validCodes.includes(code)) return;
 
       // Resolve the iframe from sender.frameId or message.frameName
       let srcIframe = null;
@@ -127,11 +128,12 @@ document.addEventListener('DOMContentLoaded', () => {
       if (appState.setActiveIframe) appState.setActiveIframe(iframe);
 
       // Map Alt keys to actions
-      if (k === 'a') handleShortcutForIframe(iframe, 'move-left');
-      else if (k === 'd') handleShortcutForIframe(iframe, 'move-right');
-      else if (k === 'e') handleShortcutForIframe(iframe, 'detach-iframe');
-      else if (k === 'x') handleShortcutForIframe(iframe, 'remove-iframe');
-      else if (k === 'f') handleShortcutForIframe(iframe, 'toggle-full-page');
+      if (code === 'KeyA') handleShortcutForIframe(iframe, 'move-left');
+      else if (code === 'KeyD') handleShortcutForIframe(iframe, 'move-right');
+      else if (code === 'KeyE') handleShortcutForIframe(iframe, 'detach-iframe');
+      else if (code === 'KeyX') handleShortcutForIframe(iframe, 'remove-iframe');
+      else if (code === 'KeyF')
+        handleShortcutForIframe(iframe, 'toggle-full-page');
     }
   });
 
@@ -395,23 +397,28 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const active = appState.getActiveIframe && appState.getActiveIframe();
       if (!active) return;
-      // Delegate to shared handler
-      const k = String(e.key || '').toLowerCase();
-      if (!['a', 'd', 'e', 'x', 'f'].includes(k)) return;
+
+      // Use `e.code` to check for physical keys, avoiding issues with macOS
+      // and special characters when Alt is pressed.
+      const validCodes = ['KeyA', 'KeyD', 'KeyE', 'KeyX', 'KeyF'];
+      if (!validCodes.includes(e.code)) return;
+
       // If in full-page mode, do nothing for A/D (move) and don't intercept
       const wrapper = /** @type {HTMLDivElement|null} */ (
         active.closest('.iframe-wrapper')
       );
-      if (wrapper && isFullPage(wrapper) && (k === 'a' || k === 'd')) {
+      if (wrapper && isFullPage(wrapper) && (e.code === 'KeyA' || e.code === 'KeyD')) {
         return;
       }
+
       e.preventDefault();
       e.stopPropagation();
-      if (k === 'a') handleShortcutForIframe(active, 'move-left');
-      else if (k === 'd') handleShortcutForIframe(active, 'move-right');
-      else if (k === 'e') handleShortcutForIframe(active, 'detach-iframe');
-      else if (k === 'x') handleShortcutForIframe(active, 'remove-iframe');
-      else if (k === 'f') handleShortcutForIframe(active, 'toggle-full-page');
+      if (e.code === 'KeyA') handleShortcutForIframe(active, 'move-left');
+      else if (e.code === 'KeyD') handleShortcutForIframe(active, 'move-right');
+      else if (e.code === 'KeyE') handleShortcutForIframe(active, 'detach-iframe');
+      else if (e.code === 'KeyX') handleShortcutForIframe(active, 'remove-iframe');
+      else if (e.code === 'KeyF')
+        handleShortcutForIframe(active, 'toggle-full-page');
     } catch (_e) {
       // no-op
     }
