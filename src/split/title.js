@@ -1,5 +1,6 @@
 import { appState } from './state.js';
 import { updateUrlWithState } from './url.js';
+import { updateUrlDisplay } from './url-display.js';
 
 /**
  * Return ordered iframe elements based on wrapper order.
@@ -147,6 +148,7 @@ export const startContentTitleBridge = () => {
                     // no-op
                   }
                 });
+                updateUrlDisplay(ifr);
               }
             } catch (_e) {
               // no-op
