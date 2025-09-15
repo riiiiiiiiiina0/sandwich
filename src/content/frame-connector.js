@@ -22,7 +22,8 @@ try {
     'keydown',
     (e) => {
       try {
-        // Only care about Alt+A/D/E/X/F
+        // On macOS, the Option key is the alt key. On Windows, it's the Alt key.
+        // So, we just need to check for the altKey property.
         if (!e.altKey) return;
         const k = String(e.key || '').toLowerCase();
         if (!['a', 'd', 'e', 'x', 'f'].includes(k)) return;
