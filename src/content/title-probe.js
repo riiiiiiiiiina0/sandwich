@@ -7,9 +7,6 @@
    * @param {string} url
    */
   const sendUpdate = (title, url) => {
-    console.log(
-      `[title-probe (${location.href})] sendUpdate: title="${title}" url="${url}"`,
-    );
     try {
       if (
         typeof chrome !== 'undefined' &&
