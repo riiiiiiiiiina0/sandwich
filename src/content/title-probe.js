@@ -97,8 +97,6 @@
   } catch (_e) {
     // no-op
   }
-
-  console.log(`[title-probe (${location.href})] loaded`);
   key = location.href;
 })();
 

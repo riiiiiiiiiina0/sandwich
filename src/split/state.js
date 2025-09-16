@@ -20,18 +20,6 @@ export const appState = {
   setActiveIframe(iframe) {
     if (this.activeIframe !== iframe) {
       this.activeIframe = iframe;
-      try {
-        const src =
-          iframe?.getAttribute('data-sb-current-url') ||
-          iframe?.getAttribute('src') ||
-          iframe?.src ||
-          '';
-        // eslint-disable-next-line no-console
-        console.log('[SandwichBear] Active iframe changed:', iframe, src);
-      } catch (_e) {
-        // eslint-disable-next-line no-console
-        console.log('[SandwichBear] Active iframe changed:', iframe);
-      }
     }
   },
   getActiveIframe() {

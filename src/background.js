@@ -21,17 +21,13 @@ const injectWindowSpoofing = async (tabId, frameId) => {
 
           const originalStop = window.stop;
           const originalWrite = document.write;
-          window.stop = () => {
-            console.log(`🐻‍❄️ [window.stop]`);
-          };
+          window.stop = () => {};
           document.write = (content) => {
-            console.log(`🐻‍❄️ [document.write]: "${content}"`);
             if (content === '') return;
             originalWrite(content);
           };
-          console.log('window-spoofing loaded');
         } catch (e) {
-          console.log('[sandwich-bear] Failed to inject window spoofing:', e);
+          console.log('🐻‍❄️ Failed to inject window spoofing:', e);
         }
       },
     });
