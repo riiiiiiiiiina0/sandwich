@@ -7,7 +7,7 @@ import {
   setLayoutToVertical,
 } from './layout.js';
 import { createIframeMenu } from './menu.js';
-import { addDividerDragFunctionality, addIframeDragAndDropListeners } from './drag.js';
+import { addDividerDragFunctionality, addDragAndDropListenersToElement } from './drag.js';
 import {
   attachDividerPlus,
   updateDividerPlusVisibility,
@@ -253,7 +253,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const menu = createIframeMenu(iframeWrapper, index, urls.length);
     iframeWrapper.appendChild(menu);
     createUrlDisplay(iframeWrapper, iframe);
-    addIframeDragAndDropListeners(iframeWrapper);
 
     iframeContainer.appendChild(iframeWrapper);
 
@@ -425,41 +424,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Global drag-and-drop handling to disable/re-enable iframe pointer events
+  // Global drag-and-drop handling to create/remove drop-target overlays.
   let dragCounter = 0;
+  let dragOverlays = [];
 
-  const setWrappersPointerEvents = (value) => {
-    const wrappers = document.querySelectorAll('.iframe-wrapper');
-    wrappers.forEach(wrapper => {
-      for (const child of wrapper.children) {
-        if (child instanceof HTMLElement) {
-          child.style.pointerEvents = value;
-        }
-      }
-    });
+  const removeOverlays = () => {
+    dragOverlays.forEach(overlay => overlay.remove());
+    dragOverlays = [];
   };
 
   document.addEventListener('dragenter', () => {
     dragCounter++;
-    if (dragCounter === 1) {
-      setWrappersPointerEvents('none');
+    if (dragCounter === 1) { // First time entering the window
+      const wrappers = document.querySelectorAll('.iframe-wrapper');
+      wrappers.forEach(wrapper => {
+        const iframe = /** @type {HTMLIFrameElement|null} */ (wrapper.querySelector('iframe'));
+        if (!iframe) return;
+
+        const overlay = document.createElement('div');
+        overlay.style.position = 'absolute';
+        overlay.style.top = '0';
+        overlay.style.left = '0';
+        overlay.style.width = '100%';
+        overlay.style.height = '100%';
+        overlay.style.zIndex = '30'; // Higher than iframe menus etc.
+
+        addDragAndDropListenersToElement(overlay, /** @type {HTMLDivElement} */ (wrapper), iframe);
+
+        wrapper.appendChild(overlay);
+        dragOverlays.push(overlay);
+      });
     }
   });
 
   document.addEventListener('dragleave', () => {
     dragCounter--;
     if (dragCounter === 0) {
-      setWrappersPointerEvents('auto');
+      removeOverlays();
     }
   });
 
   document.addEventListener('drop', () => {
     dragCounter = 0;
-    setWrappersPointerEvents('auto');
+    removeOverlays();
   });
 
   document.addEventListener('dragend', () => {
     dragCounter = 0;
-    setWrappersPointerEvents('auto');
+    removeOverlays();
   });
 });

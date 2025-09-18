@@ -231,39 +231,38 @@ export const addGridDividerDragFunctionality = (divider, orientation) => {
 };
 
 /**
- * Add drag-and-drop listeners to an iframe wrapper to handle dropped URLs.
- * @param {HTMLDivElement} iframeWrapper
+ * Add drag-and-drop listeners to a given element to handle dropped URLs.
+ * @param {HTMLElement} element The element to attach listeners to.
+ * @param {HTMLDivElement} wrapper The parent wrapper for visual feedback.
+ * @param {HTMLIFrameElement} iframe The iframe to update on drop.
  */
-export const addIframeDragAndDropListeners = (iframeWrapper) => {
-  iframeWrapper.addEventListener('dragenter', (e) => {
+export const addDragAndDropListenersToElement = (element, wrapper, iframe) => {
+  element.addEventListener('dragenter', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    iframeWrapper.classList.add('drag-over');
+    wrapper.classList.add('drag-over');
   });
 
-  iframeWrapper.addEventListener('dragover', (e) => {
+  element.addEventListener('dragover', (e) => {
     e.preventDefault();
     e.stopPropagation();
   });
 
-  iframeWrapper.addEventListener('dragleave', (e) => {
+  element.addEventListener('dragleave', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    iframeWrapper.classList.remove('drag-over');
+    wrapper.classList.remove('drag-over');
   });
 
-  iframeWrapper.addEventListener('drop', (e) => {
+  element.addEventListener('drop', (e) => {
     e.preventDefault();
     e.stopPropagation();
-    iframeWrapper.classList.remove('drag-over');
+    wrapper.classList.remove('drag-over');
 
     const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
     if (url) {
-      const iframe = iframeWrapper.querySelector('iframe');
-      if (iframe) {
-        iframe.src = url;
-        updateUrlWithState();
-      }
+      iframe.src = url;
+      updateUrlWithState();
     }
   });
 };
