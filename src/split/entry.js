@@ -7,7 +7,7 @@ import {
   setLayoutToVertical,
 } from './layout.js';
 import { createIframeMenu } from './menu.js';
-import { addDividerDragFunctionality } from './drag.js';
+import { addDividerDragFunctionality, addIframeDragAndDropListeners } from './drag.js';
 import {
   attachDividerPlus,
   updateDividerPlusVisibility,
@@ -253,6 +253,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const menu = createIframeMenu(iframeWrapper, index, urls.length);
     iframeWrapper.appendChild(menu);
     createUrlDisplay(iframeWrapper, iframe);
+    addIframeDragAndDropListeners(iframeWrapper);
 
     iframeContainer.appendChild(iframeWrapper);
 

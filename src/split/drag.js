@@ -229,3 +229,41 @@ export const addGridDividerDragFunctionality = (divider, orientation) => {
     document.addEventListener('mouseleave', onMouseUp);
   });
 };
+
+/**
+ * Add drag-and-drop listeners to an iframe wrapper to handle dropped URLs.
+ * @param {HTMLDivElement} iframeWrapper
+ */
+export const addIframeDragAndDropListeners = (iframeWrapper) => {
+  iframeWrapper.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    iframeWrapper.classList.add('drag-over');
+  });
+
+  iframeWrapper.addEventListener('dragover', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+  });
+
+  iframeWrapper.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    iframeWrapper.classList.remove('drag-over');
+  });
+
+  iframeWrapper.addEventListener('drop', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    iframeWrapper.classList.remove('drag-over');
+
+    const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+    if (url) {
+      const iframe = iframeWrapper.querySelector('iframe');
+      if (iframe) {
+        iframe.src = url;
+        updateUrlWithState();
+      }
+    }
+  });
+};
