@@ -428,39 +428,38 @@ document.addEventListener('DOMContentLoaded', () => {
   // Global drag-and-drop handling to disable/re-enable iframe pointer events
   let dragCounter = 0;
 
+  const setWrappersPointerEvents = (value) => {
+    const wrappers = document.querySelectorAll('.iframe-wrapper');
+    wrappers.forEach(wrapper => {
+      for (const child of wrapper.children) {
+        if (child instanceof HTMLElement) {
+          child.style.pointerEvents = value;
+        }
+      }
+    });
+  };
+
   document.addEventListener('dragenter', () => {
     dragCounter++;
     if (dragCounter === 1) {
-      const iframes = document.querySelectorAll('.resizable-iframe');
-      iframes.forEach(iframe => {
-        iframe.style.pointerEvents = 'none';
-      });
+      setWrappersPointerEvents('none');
     }
   });
 
   document.addEventListener('dragleave', () => {
     dragCounter--;
     if (dragCounter === 0) {
-      const iframes = document.querySelectorAll('.resizable-iframe');
-      iframes.forEach(iframe => {
-        iframe.style.pointerEvents = 'auto';
-      });
+      setWrappersPointerEvents('auto');
     }
   });
 
   document.addEventListener('drop', () => {
     dragCounter = 0;
-    const iframes = document.querySelectorAll('.resizable-iframe');
-    iframes.forEach(iframe => {
-      iframe.style.pointerEvents = 'auto';
-    });
+    setWrappersPointerEvents('auto');
   });
 
   document.addEventListener('dragend', () => {
     dragCounter = 0;
-    const iframes = document.querySelectorAll('.resizable-iframe');
-    iframes.forEach(iframe => {
-      iframe.style.pointerEvents = 'auto';
-    });
+    setWrappersPointerEvents('auto');
   });
 });
