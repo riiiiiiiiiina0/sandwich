@@ -424,4 +424,43 @@ document.addEventListener('DOMContentLoaded', () => {
       // no-op
     }
   });
+
+  // Global drag-and-drop handling to disable/re-enable iframe pointer events
+  let dragCounter = 0;
+
+  document.addEventListener('dragenter', () => {
+    dragCounter++;
+    if (dragCounter === 1) {
+      const iframes = document.querySelectorAll('.resizable-iframe');
+      iframes.forEach(iframe => {
+        iframe.style.pointerEvents = 'none';
+      });
+    }
+  });
+
+  document.addEventListener('dragleave', () => {
+    dragCounter--;
+    if (dragCounter === 0) {
+      const iframes = document.querySelectorAll('.resizable-iframe');
+      iframes.forEach(iframe => {
+        iframe.style.pointerEvents = 'auto';
+      });
+    }
+  });
+
+  document.addEventListener('drop', () => {
+    dragCounter = 0;
+    const iframes = document.querySelectorAll('.resizable-iframe');
+    iframes.forEach(iframe => {
+      iframe.style.pointerEvents = 'auto';
+    });
+  });
+
+  document.addEventListener('dragend', () => {
+    dragCounter = 0;
+    const iframes = document.querySelectorAll('.resizable-iframe');
+    iframes.forEach(iframe => {
+      iframe.style.pointerEvents = 'auto';
+    });
+  });
 });
