@@ -244,12 +244,8 @@ const updateAction = async () => {
       typeof activeTab.url === 'string' &&
       activeTab.url.startsWith(splitBaseUrl)
     ) {
-      // On split page: show popup with page controls
-      title = 'Page Controls';
-      await chrome.action.setPopup({
-        tabId: activeTab.id,
-        popup: 'src/action/popup.html',
-      });
+      // On split page: show ungroup option
+      title = 'Ungroup iframes into tabs';
     } else {
       // Not on split page: show Open {N (2<=N<=4)} tabs in split view
       const windowId = activeTab.windowId;
@@ -268,10 +264,10 @@ const updateAction = async () => {
         const n = Math.max(2, Math.min(4, httpTabs.length));
         title = `Open ${n} tabs in split view`;
       }
-      // Clear popup so clicks are handled by the listener below
-      await chrome.action.setPopup({ tabId: activeTab.id, popup: '' });
     }
 
+    // Clear popup so clicks are handled by the listener below
+    await chrome.action.setPopup({ tabId: activeTab.id, popup: '' });
     await chrome.action.setTitle({ title, tabId: activeTab.id });
   } catch (_e) {
     // no-op
@@ -302,7 +298,7 @@ chrome.runtime.onStartup.addListener(() => {
   updateAction();
 });
 
-const doSplit = async (currentTab) => {
+const doSplit = async () => {
   try {
     // Get highlighted tabs in the current window
     const highlightedTabs = await chrome.tabs.query({
@@ -339,7 +335,7 @@ const doSplit = async (currentTab) => {
     const firstTab = httpTabs[0];
     const newTab = await chrome.tabs.create({
       url: splitUrl,
-      windowId: currentTab.windowId,
+      windowId: firstTab.windowId,
     });
 
     if (typeof newTab.id === 'number') {
@@ -438,7 +434,16 @@ const doUngroup = async () => {
 
 // Handle action button click: open up to the first 4 highlighted tabs in split page
 // This only fires on non-split pages, since split pages have a popup.
-chrome.action.onClicked.addListener(doSplit);
+chrome.action.onClicked.addListener(async (tab) => {
+  const splitBaseUrl = chrome.runtime.getURL('src/split.html');
+  const isSplitPage = tab && tab.url && tab.url.startsWith(splitBaseUrl);
+
+  if (isSplitPage) {
+    await doUngroup();
+  } else {
+    await doSplit();
+  }
+});
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.action === 'get-tab-id') {
@@ -451,22 +456,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   if (message.action === 'openAnchorLink') {
     // The tabs permission is required for chrome.tabs.create
     chrome.tabs.create({ url: message.url });
-  } else if (message.action === 'ungroup') {
-    await doUngroup();
   } else if (message === 'isInstalled') {
     sendResponse({ status: 'installed' });
-  }
-});
-
-chrome.commands.onCommand.addListener(async (command, tab) => {
-  if (command !== 'toggle-split-view') return;
-
-  const splitBaseUrl = chrome.runtime.getURL('src/split.html');
-  const isSplitPage = tab && tab.url && tab.url.startsWith(splitBaseUrl);
-
-  if (isSplitPage) {
-    await doUngroup();
-  } else {
-    await doSplit(tab);
   }
 });
