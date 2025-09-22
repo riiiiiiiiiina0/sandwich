@@ -127,7 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!sourceWrapper) return;
 
       const sourceOrder = parseInt(sourceWrapper.style.order, 10);
-      const targetOrder = sourceOrder + 1;
+      const targetOrder = sourceOrder + 2;
 
       const targetWrapper = /** @type {HTMLDivElement|null} */ (
         document.querySelector(`.iframe-wrapper[style*="order: ${targetOrder}"]`)
