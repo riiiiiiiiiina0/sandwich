@@ -22,6 +22,7 @@ import {
   resetDocumentTitleAndFavicon,
   resetFaviconToDefault,
   updateDocumentTitleAndFaviconFromIframe,
+  updateDocumentTitleWithSummary,
 } from './title.js';
 import { startContentTitleBridge } from './title.js';
 import {
@@ -156,7 +157,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.addEventListener('visibilitychange', () => {
     if (document.hidden) {
       // Tab is inactive
-      updateDocumentTitleFromIframes();
+      updateDocumentTitleWithSummary();
       resetFaviconToDefault();
     } else {
       // Tab is active

@@ -61,6 +61,46 @@ export const updateDocumentTitleFromIframes = () => {
   }
 };
 
+/**
+ * Update document.title to a summarized list of iframe titles.
+ * @returns {Promise<void>}
+ */
+export const updateDocumentTitleWithSummary = async () => {
+  if (typeof window.Summarizer === 'undefined') {
+    updateDocumentTitleFromIframes();
+    return;
+  }
+
+  try {
+    const iframes = getOrderedIframes();
+    const titles = iframes.map((ifr) => deriveIframeTitle(ifr)).filter(Boolean);
+    if (!titles.length) {
+      document.title = 'Sandwich Bear';
+      return;
+    }
+
+    const textToSummarize = titles.join('; ');
+
+    const summarizer = await window.Summarizer.create({
+      sharedContext:
+        'web page titles to be summarized into no more than 5 words',
+      type: 'tldr',
+      length: 'short',
+      format: 'plain-text',
+      expectedInputLanguages: ['en-US'],
+      outputLanguage: 'en-US',
+    });
+
+    const summary = await summarizer.summarize(textToSummarize);
+    const shortSummary = summary.split(' ').slice(0, 5).join(' ');
+    document.title = shortSummary || 'Sandwich Bear';
+  } catch (err) {
+    console.error('Failed to summarize titles:', err);
+    // Fallback to simple join
+    updateDocumentTitleFromIframes();
+  }
+};
+
 // Find or create the favicon link element
 const getFaviconEl = () => {
   let faviconEl = document.querySelector("link[rel~='icon']");
