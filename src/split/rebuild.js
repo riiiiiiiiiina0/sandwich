@@ -8,6 +8,44 @@ import {
 } from './title.js';
 import { attachActiveListenersToAllIframes } from './active.js';
 
+export const updateRightmostStatusForAllIframes = () => {
+  const wrappers = /** @type {NodeListOf<HTMLDivElement>} */ (
+    document.querySelectorAll('.iframe-wrapper')
+  );
+  if (wrappers.length === 0) return;
+
+  let rightmostWrapper = null;
+  let maxOrder = -1;
+
+  wrappers.forEach((wrapper) => {
+    const order = parseInt(wrapper.style.order, 10);
+    if (order > maxOrder) {
+      maxOrder = order;
+      rightmostWrapper = wrapper;
+    }
+  });
+
+  const tabId = appState.getTabId();
+  if (!tabId) return;
+
+  wrappers.forEach((wrapper) => {
+    const iframe = wrapper.querySelector('iframe');
+    if (iframe && iframe.dataset.frameId) {
+      const frameId = parseInt(iframe.dataset.frameId, 10);
+      const isRightmost = wrapper === rightmostWrapper;
+      try {
+        chrome.tabs.sendMessage(
+          tabId,
+          { action: 'update-rightmost-status', isRightmost },
+          { frameId },
+        );
+      } catch (e) {
+        // ignore errors, e.g. if frame is not ready
+      }
+    }
+  });
+};
+
 export const rebuildInterface = () => {
   const iframeContainer = appState.getContainer();
 
@@ -42,4 +80,5 @@ export const rebuildInterface = () => {
   attachTitleListenersToAllIframes();
   attachActiveListenersToAllIframes();
   updateDocumentTitleFromIframes();
+  updateRightmostStatusForAllIframes();
 };

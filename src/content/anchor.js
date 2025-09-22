@@ -1,5 +1,35 @@
 // content-script.js
 if (window.name.startsWith('sb-iframe-')) {
+  let isThisFrameRightmost = false;
+
+  chrome.runtime.onMessage.addListener((message) => {
+    if (message.action === 'update-rightmost-status') {
+      isThisFrameRightmost = message.isRightmost;
+    }
+  });
+
+  document.addEventListener(
+    'mouseover',
+    (e) => {
+      const target = /** @type {HTMLElement} */ (e.target).closest('a[href]');
+      if (target && isThisFrameRightmost) {
+        chrome.runtime.sendMessage({ action: 'hide-replace-menu' });
+      }
+    },
+    true,
+  );
+
+  document.addEventListener(
+    'mouseout',
+    (e) => {
+      const target = /** @type {HTMLElement} */ (e.target).closest('a[href]');
+      if (target) {
+        chrome.runtime.sendMessage({ action: 'show-replace-menu' });
+      }
+    },
+    true,
+  );
+
   document.addEventListener(
     'click',
     function (e) {
