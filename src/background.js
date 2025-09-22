@@ -298,7 +298,7 @@ chrome.runtime.onStartup.addListener(() => {
   updateAction();
 });
 
-const doSplit = async (currentTab) => {
+const doSplit = async () => {
   try {
     // Get highlighted tabs in the current window
     const highlightedTabs = await chrome.tabs.query({
@@ -335,7 +335,7 @@ const doSplit = async (currentTab) => {
     const firstTab = httpTabs[0];
     const newTab = await chrome.tabs.create({
       url: splitUrl,
-      windowId: currentTab.windowId,
+      windowId: firstTab.windowId,
     });
 
     if (typeof newTab.id === 'number') {
@@ -441,7 +441,7 @@ chrome.action.onClicked.addListener(async (tab) => {
   if (isSplitPage) {
     await doUngroup();
   } else {
-    await doSplit(tab);
+    await doSplit();
   }
 });
 
@@ -458,18 +458,5 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     chrome.tabs.create({ url: message.url });
   } else if (message === 'isInstalled') {
     sendResponse({ status: 'installed' });
-  }
-});
-
-chrome.commands.onCommand.addListener(async (command, tab) => {
-  if (command !== 'toggle-split-view') return;
-
-  const splitBaseUrl = chrome.runtime.getURL('src/split.html');
-  const isSplitPage = tab && tab.url && tab.url.startsWith(splitBaseUrl);
-
-  if (isSplitPage) {
-    await doUngroup();
-  } else {
-    await doSplit(tab);
   }
 });
