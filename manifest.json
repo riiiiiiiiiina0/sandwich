@@ -10,16 +10,8 @@
     "128": "icons/icon-128x128.png"
   },
   "action": {
-    "default_title": "Sandwich Bear"
-  },
-  "commands": {
-    "toggle-split-view": {
-      "suggested_key": {
-        "default": "Ctrl+S",
-        "mac": "Command+S"
-      },
-      "description": "Create split page from highlighted tabs, or ungroup iframes in split page into browser tabs"
-    }
+    "default_title": "Sandwich Bear",
+    "description": "Create split page from highlighted tabs, or ungroup iframes in split page into browser tabs"
   },
   "permissions": [
     "tabs",
