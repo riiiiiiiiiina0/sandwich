@@ -20,6 +20,8 @@ import {
   attachIframeTitleListener,
   updateDocumentTitleFromIframes,
   resetDocumentTitleAndFavicon,
+  resetFaviconToDefault,
+  updateDocumentTitleAndFaviconFromIframe,
 } from './title.js';
 import { startContentTitleBridge } from './title.js';
 import {
@@ -150,9 +152,21 @@ document.addEventListener('DOMContentLoaded', () => {
   );
   appState.setContainer(iframeContainer);
 
-  // Reset title when mouse leaves the container
-  iframeContainer.addEventListener('mouseleave', () => {
-    resetDocumentTitleAndFavicon();
+  // Handle tab visibility changes
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      // Tab is inactive
+      updateDocumentTitleFromIframes();
+      resetFaviconToDefault();
+    } else {
+      // Tab is active
+      const activeIframe = appState.getActiveIframe();
+      if (activeIframe) {
+        updateDocumentTitleAndFaviconFromIframe(activeIframe);
+      } else {
+        resetDocumentTitleAndFavicon();
+      }
+    }
   });
 
   const urlParams = new URLSearchParams(window.location.search);

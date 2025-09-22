@@ -74,13 +74,17 @@ const getFaviconEl = () => {
   return faviconEl;
 };
 
-export const resetDocumentTitleAndFavicon = () => {
-  document.title = 'Sandwich Bear';
+export const resetFaviconToDefault = () => {
   const faviconEl = getFaviconEl();
   // The original favicon is docs/favicon.png.
   // The split page is at /src/split.html.
   // So the path should be ../docs/favicon.png
   faviconEl.href = '../docs/favicon.png';
+};
+
+export const resetDocumentTitleAndFavicon = () => {
+  document.title = 'Sandwich Bear';
+  resetFaviconToDefault();
 };
 
 export const updateDocumentTitleAndFaviconFromIframe = (iframe) => {
@@ -96,7 +100,7 @@ export const updateDocumentTitleAndFaviconFromIframe = (iframe) => {
     // Fallback to existing title logic if we can't message the frame
     const title = iframe.getAttribute('data-sb-title') || 'Untitled';
     document.title = title;
-    resetDocumentTitleAndFavicon(); // Reset favicon as we can't get it
+    resetFaviconToDefault(); // Reset favicon as we can't get it
     return;
   }
 
@@ -106,11 +110,14 @@ export const updateDocumentTitleAndFaviconFromIframe = (iframe) => {
     { frameId: Number(frameId) },
     (response) => {
       if (chrome.runtime.lastError) {
-        console.warn('Could not message frame:', chrome.runtime.lastError.message);
+        console.warn(
+          'Could not message frame:',
+          chrome.runtime.lastError.message,
+        );
         // Fallback to stored title if messaging fails
         const title = iframe.getAttribute('data-sb-title') || 'Untitled';
         document.title = title;
-        resetDocumentTitleAndFavicon();
+        resetFaviconToDefault();
         return;
       }
 
@@ -121,13 +128,13 @@ export const updateDocumentTitleAndFaviconFromIframe = (iframe) => {
           faviconEl.href = response.favicon;
         } else {
           // If no favicon is found on the page, revert to default.
-          resetDocumentTitleAndFavicon();
+          resetFaviconToDefault();
         }
       } else {
         // If no response, also fallback
         const title = iframe.getAttribute('data-sb-title') || 'Untitled';
         document.title = title;
-        resetDocumentTitleAndFavicon();
+        resetFaviconToDefault();
       }
     },
   );
