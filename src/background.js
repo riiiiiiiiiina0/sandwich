@@ -38,6 +38,7 @@ const injectWindowSpoofing = async (tabId, frameId) => {
 
 const CONTEXT_MENU_ID_SPLIT = 'open-in-split-view';
 const CONTEXT_MENU_ID_RIGHT = 'open-on-the-right';
+const CONTEXT_MENU_ID_REPLACE = 'replace-on-the-right';
 
 chrome.runtime.onInstalled.addListener(() => {
   // Remove existing rules and add new ones
@@ -99,7 +100,13 @@ chrome.runtime.onInstalled.addListener(() => {
 
   chrome.contextMenus.create({
     id: CONTEXT_MENU_ID_RIGHT,
-    title: 'Open link on the right',
+    title: 'Add tab to the right',
+    contexts: ['link'],
+  });
+
+  chrome.contextMenus.create({
+    id: CONTEXT_MENU_ID_REPLACE,
+    title: 'Replace tab to the right',
     contexts: ['link'],
   });
 });
@@ -160,6 +167,9 @@ const updateContextMenuVisibility = async (tab) => {
   await chrome.contextMenus.update(CONTEXT_MENU_ID_RIGHT, {
     visible: showRightMenu,
   });
+  await chrome.contextMenus.update(CONTEXT_MENU_ID_REPLACE, {
+    visible: showRightMenu,
+  });
 };
 
 chrome.tabs.onActivated.addListener(async (activeInfo) => {
@@ -197,6 +207,14 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     if (tab && typeof tab.id === 'number') {
       chrome.tabs.sendMessage(tab.id, {
         action: 'add-iframe-right',
+        url: info.linkUrl,
+        frameId: info.frameId,
+      });
+    }
+  } else if (info.menuItemId === CONTEXT_MENU_ID_REPLACE) {
+    if (tab && typeof tab.id === 'number') {
+      chrome.tabs.sendMessage(tab.id, {
+        action: 'replace-iframe-right',
         url: info.linkUrl,
         frameId: info.frameId,
       });
