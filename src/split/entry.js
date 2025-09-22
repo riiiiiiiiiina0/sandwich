@@ -112,6 +112,42 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         insertAtEdge('tail', message.url);
       }
+    } else if (message.action === 'replace-iframe-right') {
+      const { url } = message;
+      if (!url) return;
+
+      const resolvedFrameId = message.frameId ?? sender.frameId;
+      let sourceIframe = null;
+      if (typeof resolvedFrameId === 'number') {
+        sourceIframe = document.querySelector(
+          `iframe[data-frame-id="${resolvedFrameId}"]`,
+        );
+      }
+      if (!sourceIframe && typeof message.frameName === 'string') {
+        sourceIframe = document.querySelector(
+          `iframe[name="${message.frameName}"]`,
+        );
+      }
+      if (!sourceIframe) return;
+
+      const sourceWrapper = /** @type {HTMLDivElement} */ (
+        sourceIframe.closest('.iframe-wrapper')
+      );
+      if (!sourceWrapper) return;
+
+      const sourceOrder = parseInt(sourceWrapper.style.order, 10);
+      const targetOrder = sourceOrder + 2;
+
+      const targetWrapper = /** @type {HTMLDivElement|null} */ (
+        document.querySelector(`.iframe-wrapper[style*="order: ${targetOrder}"]`)
+      );
+
+      if (targetWrapper) {
+        const targetIframe = targetWrapper.querySelector('iframe');
+        if (targetIframe) {
+          targetIframe.src = url;
+        }
+      }
     } else if (message.action === 'sb:key') {
       // Handle forwarded key events from iframes
       const code = message.code;

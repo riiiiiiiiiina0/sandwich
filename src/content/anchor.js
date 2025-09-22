@@ -13,6 +13,7 @@ if (window.name.startsWith('sb-iframe-')) {
         //   (navigator.platform.includes('Mac') && (e.metaKey || e.ctrlKey)) ||
         //   (!navigator.platform.includes('Mac') && (e.altKey || e.ctrlKey));
         const isModifierOpenRight = e.metaKey;
+        const isModifierReplaceRight = e.altKey;
 
         // If Cmd (mac) or Alt (win) (or Ctrl as alternative) is held, request add-iframe-right
         if (url && isModifierOpenRight) {
@@ -22,6 +23,21 @@ if (window.name.startsWith('sb-iframe-')) {
             // @ts-ignore sender will include frameId; include window.name for robustness
             chrome.runtime.sendMessage({
               action: 'add-iframe-right',
+              url: url,
+              frameName: window.name,
+            });
+          } catch (_err) {}
+          return;
+        }
+
+        // If Option (mac) or Alt (win) is held, request replace-iframe-right
+        if (url && isModifierReplaceRight) {
+          e.stopPropagation();
+          e.preventDefault();
+          try {
+            // @ts-ignore sender will include frameId; include window.name for robustness
+            chrome.runtime.sendMessage({
+              action: 'replace-iframe-right',
               url: url,
               frameName: window.name,
             });
