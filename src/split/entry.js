@@ -113,12 +113,21 @@ document.addEventListener('DOMContentLoaded', () => {
         insertAtEdge('tail', message.url);
       }
     } else if (message.action === 'replace-iframe-right') {
-      const { url, frameId } = message;
-      if (!url || typeof frameId !== 'number') return;
+      const { url } = message;
+      if (!url) return;
 
-      const sourceIframe = document.querySelector(
-        `iframe[data-frame-id="${frameId}"]`,
-      );
+      const resolvedFrameId = message.frameId ?? sender.frameId;
+      let sourceIframe = null;
+      if (typeof resolvedFrameId === 'number') {
+        sourceIframe = document.querySelector(
+          `iframe[data-frame-id="${resolvedFrameId}"]`,
+        );
+      }
+      if (!sourceIframe && typeof message.frameName === 'string') {
+        sourceIframe = document.querySelector(
+          `iframe[name="${message.frameName}"]`,
+        );
+      }
       if (!sourceIframe) return;
 
       const sourceWrapper = /** @type {HTMLDivElement} */ (
