@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Sandwich Bear",
-  "version": "1.37",
+  "version": "1.38",
   "description": "Select and view tabs in a split screen layout.",
   "icons": {
     "16": "icons/icon-16x16.png",
