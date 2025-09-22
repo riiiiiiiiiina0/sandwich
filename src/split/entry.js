@@ -112,6 +112,53 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         insertAtEdge('tail', message.url);
       }
+    } else if (message.action === 'replace-iframe-right') {
+      const resolvedFrameId = message.frameId ?? sender.frameId;
+      let sourceIframe = null;
+      if (typeof resolvedFrameId === 'number') {
+        sourceIframe = document.querySelector(
+          `iframe[data-frame-id="${resolvedFrameId}"]`,
+        );
+      }
+      if (!sourceIframe && typeof message.frameName === 'string') {
+        sourceIframe = document.querySelector(
+          `iframe[name="${message.frameName}"]`,
+        );
+      }
+      if (!sourceIframe) return; // source iframe not found
+
+      const sourceWrapper = /** @type {HTMLDivElement|null} */ (
+        sourceIframe.closest('.iframe-wrapper')
+      );
+      if (!sourceWrapper) return; // source wrapper not found
+
+      const sourceOrder = parseInt(sourceWrapper.style.order, 10);
+
+      const iframeContainer = appState.getContainer();
+      const wrappers = /** @type {HTMLDivElement[]} */ (
+        Array.from(iframeContainer.querySelectorAll('.iframe-wrapper'))
+      );
+
+      const wrappersSorted = wrappers
+        .map((w) => ({
+          el: w,
+          orderValue: parseInt(w.style.order, 10),
+        }))
+        .sort((a, b) => a.orderValue - b.orderValue);
+
+      const sourceIndex = wrappersSorted.findIndex(
+        (w) => w.orderValue === sourceOrder,
+      );
+
+      if (sourceIndex > -1 && sourceIndex < wrappersSorted.length - 1) {
+        const targetWrapper = wrappersSorted[sourceIndex + 1].el;
+        if (targetWrapper) {
+          const targetIframe = targetWrapper.querySelector('iframe');
+          if (targetIframe) {
+            targetIframe.src = message.url;
+          }
+        }
+      }
     } else if (message.action === 'sb:key') {
       // Handle forwarded key events from iframes
       const code = message.code;
