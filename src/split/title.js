@@ -61,6 +61,85 @@ export const updateDocumentTitleFromIframes = () => {
   }
 };
 
+// Find or create the favicon link element
+const getFaviconEl = () => {
+  let faviconEl = document.querySelector("link[rel~='icon']");
+  if (!faviconEl) {
+    faviconEl = document.createElement('link');
+    faviconEl.rel = 'icon';
+    // The default favicon is a png, so type should be image/png
+    faviconEl.type = 'image/png';
+    document.head.appendChild(faviconEl);
+  }
+  return faviconEl;
+};
+
+export const resetFaviconToDefault = () => {
+  const faviconEl = getFaviconEl();
+  // The original favicon is docs/favicon.png.
+  // The split page is at /src/split.html.
+  // So the path should be ../docs/favicon.png
+  faviconEl.href = '../docs/favicon.png';
+};
+
+export const resetDocumentTitleAndFavicon = () => {
+  document.title = 'Sandwich Bear';
+  resetFaviconToDefault();
+};
+
+export const updateDocumentTitleAndFaviconFromIframe = (iframe) => {
+  if (!iframe) {
+    resetDocumentTitleAndFavicon();
+    return;
+  }
+
+  const tabId = appState.getTabId();
+  const frameId = iframe.dataset.frameId;
+
+  if (!tabId || !frameId) {
+    // Fallback to existing title logic if we can't message the frame
+    const title = iframe.getAttribute('data-sb-title') || 'Untitled';
+    document.title = title;
+    resetFaviconToDefault(); // Reset favicon as we can't get it
+    return;
+  }
+
+  chrome.tabs.sendMessage(
+    Number(tabId),
+    { action: 'sb:get-title' },
+    { frameId: Number(frameId) },
+    (response) => {
+      if (chrome.runtime.lastError) {
+        console.warn(
+          'Could not message frame:',
+          chrome.runtime.lastError.message,
+        );
+        // Fallback to stored title if messaging fails
+        const title = iframe.getAttribute('data-sb-title') || 'Untitled';
+        document.title = title;
+        resetFaviconToDefault();
+        return;
+      }
+
+      if (response) {
+        document.title = response.title || 'Untitled';
+        const faviconEl = getFaviconEl();
+        if (response.favicon) {
+          faviconEl.href = response.favicon;
+        } else {
+          // If no favicon is found on the page, revert to default.
+          resetFaviconToDefault();
+        }
+      } else {
+        // If no response, also fallback
+        const title = iframe.getAttribute('data-sb-title') || 'Untitled';
+        document.title = title;
+        resetFaviconToDefault();
+      }
+    },
+  );
+};
+
 /**
  * Attach load listener to update stored title (when accessible) and refresh document.title.
  * @param {HTMLIFrameElement} iframe

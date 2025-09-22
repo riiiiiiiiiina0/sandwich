@@ -9,6 +9,8 @@ export const appState = {
   gridRowPercent: 50,
   // Currently hovered/active iframe
   activeIframe: /** @type {HTMLIFrameElement | null} */ (null),
+  // The tab ID of the split page itself
+  tabId: /** @type {number|null} */ (null),
   setContainer(el) {
     this.iframeContainer = el;
   },
@@ -63,5 +65,12 @@ export const appState = {
   },
   getGridRowPercent() {
     return this.gridRowPercent;
+  },
+  // Tab ID
+  setTabId(id) {
+    this.tabId = id;
+  },
+  getTabId() {
+    return this.tabId;
   },
 };

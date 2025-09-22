@@ -19,6 +19,9 @@ import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 import {
   attachIframeTitleListener,
   updateDocumentTitleFromIframes,
+  resetDocumentTitleAndFavicon,
+  resetFaviconToDefault,
+  updateDocumentTitleAndFaviconFromIframe,
 } from './title.js';
 import { startContentTitleBridge } from './title.js';
 import {
@@ -31,6 +34,13 @@ import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
 import { createUrlDisplay } from './url-display.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Store the tabId for messaging iframes
+  chrome.runtime.sendMessage({ action: 'get-tab-id' }, (response) => {
+    if (response && response.tabId) {
+      appState.setTabId(response.tabId);
+    }
+  });
+
   startContentTitleBridge();
 
   chrome.runtime.onMessage.addListener((message, sender) => {
@@ -141,6 +151,23 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('iframe-container')
   );
   appState.setContainer(iframeContainer);
+
+  // Handle tab visibility changes
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      // Tab is inactive
+      updateDocumentTitleFromIframes();
+      resetFaviconToDefault();
+    } else {
+      // Tab is active
+      const activeIframe = appState.getActiveIframe();
+      if (activeIframe) {
+        updateDocumentTitleAndFaviconFromIframe(activeIframe);
+      } else {
+        resetDocumentTitleAndFavicon();
+      }
+    }
+  });
 
   const urlParams = new URLSearchParams(window.location.search);
   const stateParam = urlParams.get('state');

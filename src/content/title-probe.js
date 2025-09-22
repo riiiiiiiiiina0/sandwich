@@ -107,14 +107,21 @@ try {
     chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       try {
         if (message && message.action === 'sb:get-title') {
+          const faviconLink =
+            document.querySelector("link[rel~='icon']") ||
+            document.querySelector("link[rel~='shortcut icon']");
+          const favicon = faviconLink
+            ? new URL(faviconLink.href, document.baseURI).href
+            : '';
           sendResponse({
             title: document.title || '',
             url: location.href || '',
+            favicon: favicon,
           });
         }
       } catch (_e) {
         try {
-          sendResponse({ title: '', url: location.href || '' });
+          sendResponse({ title: '', url: location.href || '', favicon: '' });
         } catch (_e2) {}
       }
       // synchronous response
