@@ -98,16 +98,22 @@ chrome.runtime.onInstalled.addListener(() => {
     contexts: ['link'],
   });
 
-  chrome.contextMenus.create({
-    id: CONTEXT_MENU_ID_RIGHT,
-    title: 'Add tab to the right',
-    contexts: ['link'],
-  });
+  chrome.runtime.getPlatformInfo((platformInfo) => {
+    const isMac = platformInfo.os === 'mac';
+    const addShortcut = isMac ? 'Cmd+Click' : 'Meta+Click';
+    const replaceShortcut = isMac ? 'Opt+Click' : 'Alt+Click';
 
-  chrome.contextMenus.create({
-    id: CONTEXT_MENU_ID_REPLACE,
-    title: 'Replace tab to the right',
-    contexts: ['link'],
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ID_RIGHT,
+      title: `Add tab to the right (${addShortcut})`,
+      contexts: ['link'],
+    });
+
+    chrome.contextMenus.create({
+      id: CONTEXT_MENU_ID_REPLACE,
+      title: `Replace tab to the right (${replaceShortcut})`,
+      contexts: ['link'],
+    });
   });
 });
 
