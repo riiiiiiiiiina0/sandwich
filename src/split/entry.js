@@ -19,6 +19,7 @@ import { applyWrapperPrimarySize, recalcAllWrapperSizes } from './size.js';
 import {
   attachIframeTitleListener,
   updateDocumentTitleFromIframes,
+  resetDocumentTitleAndFavicon,
 } from './title.js';
 import { startContentTitleBridge } from './title.js';
 import {
@@ -31,6 +32,13 @@ import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
 import { createUrlDisplay } from './url-display.js';
 
 document.addEventListener('DOMContentLoaded', () => {
+  // Store the tabId for messaging iframes
+  chrome.runtime.sendMessage({ action: 'get-tab-id' }, (response) => {
+    if (response && response.tabId) {
+      appState.setTabId(response.tabId);
+    }
+  });
+
   startContentTitleBridge();
 
   chrome.runtime.onMessage.addListener((message, sender) => {
@@ -141,6 +149,11 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('iframe-container')
   );
   appState.setContainer(iframeContainer);
+
+  // Reset title when mouse leaves the container
+  iframeContainer.addEventListener('mouseleave', () => {
+    resetDocumentTitleAndFavicon();
+  });
 
   const urlParams = new URLSearchParams(window.location.search);
   const stateParam = urlParams.get('state');

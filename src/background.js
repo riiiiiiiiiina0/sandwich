@@ -417,6 +417,13 @@ const doUngroup = async () => {
 chrome.action.onClicked.addListener(doSplit);
 
 chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
+  if (message.action === 'get-tab-id') {
+    if (sender.tab && sender.tab.id) {
+      sendResponse({ tabId: sender.tab.id });
+    }
+    return;
+  }
+
   if (message.action === 'openAnchorLink') {
     // The tabs permission is required for chrome.tabs.create
     chrome.tabs.create({ url: message.url });

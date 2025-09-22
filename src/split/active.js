@@ -1,4 +1,5 @@
 import { appState } from './state.js';
+import { updateDocumentTitleAndFaviconFromIframe } from './title.js';
 
 /**
  * Attach mouseenter listener to mark iframe as active when hovered.
@@ -8,6 +9,7 @@ export const attachActiveHoverListener = (iframe) => {
   try {
     iframe.addEventListener('mouseenter', () => {
       appState.setActiveIframe(iframe);
+      updateDocumentTitleAndFaviconFromIframe(iframe);
     });
   } catch (_e) {
     // no-op
