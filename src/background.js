@@ -447,21 +447,6 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
     chrome.tabs.create({ url: message.url });
   } else if (message.action === 'ungroup') {
     await doUngroup();
-  } else if (message.action === 'hide-replace-menu') {
-    chrome.contextMenus.update(CONTEXT_MENU_ID_REPLACE, {
-      visible: false,
-    });
-  } else if (message.action === 'show-replace-menu') {
-    const [activeTab] = await chrome.tabs.query({
-      active: true,
-      currentWindow: true,
-    });
-    const splitBaseUrl = chrome.runtime.getURL('src/split.html');
-    const isSplitPage =
-      activeTab && activeTab.url && activeTab.url.startsWith(splitBaseUrl);
-    chrome.contextMenus.update(CONTEXT_MENU_ID_REPLACE, {
-      visible: isSplitPage,
-    });
   } else if (message === 'isInstalled') {
     sendResponse({ status: 'installed' });
   }

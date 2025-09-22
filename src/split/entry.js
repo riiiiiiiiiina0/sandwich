@@ -32,7 +32,6 @@ import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
 import { createUrlDisplay } from './url-display.js';
-import { updateRightmostStatusForAllIframes } from './rebuild.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Store the tabId for messaging iframes
@@ -337,7 +336,6 @@ document.addEventListener('DOMContentLoaded', () => {
   // Initialize document title from iframes
   updateDocumentTitleFromIframes();
   attachActiveListenersToAllIframes();
-  updateRightmostStatusForAllIframes();
 
   /**
    * Execute shortcut action for a specific iframe
