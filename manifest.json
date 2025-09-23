@@ -3,6 +3,7 @@
   "name": "Sandwich Bear",
   "version": "1.39",
   "description": "Select and view tabs in a split screen layout.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEArJv/l+hbrXZssW8oE9HuhgixxO8JvmxyV0l6CSfacFv4ppL8msAvXezo/3q40/7mMrNLVNFP13oq9Ertzeae6BZji1CNcZoLJwX9VD8/MVAejREDNWZCUzHlif1IvABTAzD017Hd/YgRMA1Z82MzpmY8H/BrM4z2Qm9tMSV/RQdyJbymO6NUZ4MQBs0Phb6j50EkJfdP6nfGpleIMEr3fQssRGX+GYQdP+LTlqTUIgxn4QuGk+YUHIWbMn7X8anNds/V/Q6E569cGj2QC1VK+WuHAZn1fJkDH0UMmxPwsq6xXXa8EY/2v8ehZaDMm8/47kkgdLY0Mwfj3rvuFQanWQIDAQAB",
   "icons": {
     "16": "icons/icon-16x16.png",
     "32": "icons/icon-32x32.png",
