@@ -49,6 +49,14 @@ export const updateUrlWithState = () => {
         iframe.src ||
         '') + '';
     try {
+      if (src.startsWith('file://')) {
+        const parts = src.split('/');
+        const B = parts[parts.length - 1];
+        if (B) {
+          return B;
+        }
+        return 'File';
+      }
       const u = new URL(src);
       return u.hostname || src;
     } catch (_e) {

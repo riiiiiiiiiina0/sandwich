@@ -1,5 +1,14 @@
 // Background script to remove headers that prevent iframe loading
 
+const isValidURL = (url) => {
+  if (typeof url !== 'string') return false;
+  return (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('file://')
+  );
+};
+
 const injectWindowSpoofing = async (tabId, frameId) => {
   try {
     await chrome.scripting.executeScript({
@@ -253,11 +262,7 @@ const updateAction = async () => {
         highlighted: true,
         windowId,
       });
-      const httpTabs = highlightedTabs.filter(
-        (t) =>
-          typeof t.url === 'string' &&
-          (t.url.startsWith('http://') || t.url.startsWith('https://')),
-      );
+      const httpTabs = highlightedTabs.filter((t) => isValidURL(t.url));
       if (httpTabs.length <= 1) {
         title = 'Highlight multiple tabs to open in split view';
       } else {
@@ -308,11 +313,7 @@ const doSplit = async () => {
 
     // Filter to http/https tabs, sort by tab index (left-to-right), take first 4
     const httpTabs = highlightedTabs
-      .filter(
-        (t) =>
-          typeof t.url === 'string' &&
-          (t.url.startsWith('http://') || t.url.startsWith('https://')),
-      )
+      .filter((t) => isValidURL(t.url))
       .sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
       .slice(0, 4);
 

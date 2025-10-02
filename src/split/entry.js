@@ -34,154 +34,158 @@ import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
 import { createUrlDisplay } from './url-display.js';
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Store the tabId for messaging iframes
-  chrome.runtime.sendMessage({ action: 'get-tab-id' }, (response) => {
-    if (response && response.tabId) {
-      appState.setTabId(response.tabId);
-    }
-  });
-
-  startContentTitleBridge();
-
-  chrome.runtime.onMessage.addListener((message, sender) => {
-    if (message.action === 'change-layout') {
-      if (message.layout === 'grid') {
-        setLayoutToGrid();
-      } else if (message.layout === 'vertical') {
-        setLayoutToVertical();
-      } else if (message.layout === 'horizontal') {
-        setLayoutToHorizontal();
+  // All extension-specific API calls are wrapped in a check for the `chrome` object.
+  // This allows the core logic to run in a standard browser for testing.
+  if (typeof chrome !== 'undefined' && chrome.runtime) {
+    // Store the tabId for messaging iframes
+    chrome.runtime.sendMessage({ action: 'get-tab-id' }, (response) => {
+      if (response && response.tabId) {
+        appState.setTabId(response.tabId);
       }
-    } else if (message.action === 'registerFrame') {
-      const { frameName } = message;
-      if (frameName && sender.frameId) {
-        const iframe = /** @type {HTMLIFrameElement|null} */ (
-          document.querySelector(`iframe[name="${frameName}"]`)
-        );
-        if (iframe) {
-          iframe.dataset.frameId = String(sender.frameId);
+    });
+
+    startContentTitleBridge();
+
+    chrome.runtime.onMessage.addListener((message, sender) => {
+      if (message.action === 'change-layout') {
+        if (message.layout === 'grid') {
+          setLayoutToGrid();
+        } else if (message.layout === 'vertical') {
+          setLayoutToVertical();
+        } else if (message.layout === 'horizontal') {
+          setLayoutToHorizontal();
         }
-      }
-    } else if (message.action === 'add-iframe-right') {
-      const wrappers = document.querySelectorAll('.iframe-wrapper');
-      if (wrappers.length >= 4) {
-        console.log('Maximum number of iframes (4) reached.');
-        return;
-      }
-
-      // Prefer explicit message.frameId, else use sender.frameId, else resolve by frameName
-      const resolvedFrameId = message.frameId ?? sender.frameId;
-      let sourceIframe = null;
-      if (typeof resolvedFrameId === 'number') {
-        sourceIframe = document.querySelector(
-          `iframe[data-frame-id="${resolvedFrameId}"]`,
-        );
-      }
-      if (!sourceIframe && typeof message.frameName === 'string') {
-        sourceIframe = document.querySelector(
-          `iframe[name="${message.frameName}"]`,
-        );
-      }
-      if (!sourceIframe) {
-        // Fallback if frame not found
-        insertAtEdge('tail', message.url);
-        return;
-      }
-
-      const sourceWrapper = /** @type {HTMLDivElement} */ (
-        sourceIframe.closest('.iframe-wrapper')
-      );
-      if (!sourceWrapper) {
-        // Fallback if wrapper not found
-        insertAtEdge('tail', message.url);
-        return;
-      }
-
-      const sourceOrder = parseInt(sourceWrapper.style.order, 10);
-      const dividerOrder = sourceOrder + 1;
-
-      const dividers = document.querySelectorAll('.iframe-divider');
-      const divider = Array.from(dividers).find(
-        (d) =>
-          parseInt(/** @type {HTMLElement} */ (d).style.order, 10) ===
-          dividerOrder,
-      );
-
-      if (divider) {
-        insertAtDivider(/** @type {HTMLDivElement} */ (divider), message.url);
-      } else {
-        insertAtEdge('tail', message.url);
-      }
-    } else if (message.action === 'replace-iframe-right') {
-      const { url } = message;
-      if (!url) return;
-
-      const resolvedFrameId = message.frameId ?? sender.frameId;
-      let sourceIframe = null;
-      if (typeof resolvedFrameId === 'number') {
-        sourceIframe = document.querySelector(
-          `iframe[data-frame-id="${resolvedFrameId}"]`,
-        );
-      }
-      if (!sourceIframe && typeof message.frameName === 'string') {
-        sourceIframe = document.querySelector(
-          `iframe[name="${message.frameName}"]`,
-        );
-      }
-      if (!sourceIframe) return;
-
-      const sourceWrapper = /** @type {HTMLDivElement} */ (
-        sourceIframe.closest('.iframe-wrapper')
-      );
-      if (!sourceWrapper) return;
-
-      const sourceOrder = parseInt(sourceWrapper.style.order, 10);
-      const targetOrder = sourceOrder + 2;
-
-      const targetWrapper = /** @type {HTMLDivElement|null} */ (
-        document.querySelector(`.iframe-wrapper[style*="order: ${targetOrder}"]`)
-      );
-
-      if (targetWrapper) {
-        const targetIframe = targetWrapper.querySelector('iframe');
-        if (targetIframe) {
-          targetIframe.src = url;
+      } else if (message.action === 'registerFrame') {
+        const { frameName } = message;
+        if (frameName && sender.frameId) {
+          const iframe = /** @type {HTMLIFrameElement|null} */ (
+            document.querySelector(`iframe[name="${frameName}"]`)
+          );
+          if (iframe) {
+            iframe.dataset.frameId = String(sender.frameId);
+          }
         }
-      }
-    } else if (message.action === 'sb:key') {
-      // Handle forwarded key events from iframes
-      const code = message.code;
-      if (!message.altKey) return;
-      const validCodes = ['KeyA', 'KeyD', 'KeyE', 'KeyX', 'KeyF'];
-      if (!validCodes.includes(code)) return;
+      } else if (message.action === 'add-iframe-right') {
+        const wrappers = document.querySelectorAll('.iframe-wrapper');
+        if (wrappers.length >= 4) {
+          console.log('Maximum number of iframes (4) reached.');
+          return;
+        }
 
-      // Resolve the iframe from sender.frameId or message.frameName
-      let srcIframe = null;
-      if (typeof sender.frameId === 'number') {
-        srcIframe = document.querySelector(
-          `iframe[data-frame-id="${sender.frameId}"]`,
+        // Prefer explicit message.frameId, else use sender.frameId, else resolve by frameName
+        const resolvedFrameId = message.frameId ?? sender.frameId;
+        let sourceIframe = null;
+        if (typeof resolvedFrameId === 'number') {
+          sourceIframe = document.querySelector(
+            `iframe[data-frame-id="${resolvedFrameId}"]`,
+          );
+        }
+        if (!sourceIframe && typeof message.frameName === 'string') {
+          sourceIframe = document.querySelector(
+            `iframe[name="${message.frameName}"]`,
+          );
+        }
+        if (!sourceIframe) {
+          // Fallback if frame not found
+          insertAtEdge('tail', message.url);
+          return;
+        }
+
+        const sourceWrapper = /** @type {HTMLDivElement} */ (
+          sourceIframe.closest('.iframe-wrapper')
         );
-      }
-      if (!srcIframe && typeof message.frameName === 'string') {
-        srcIframe = document.querySelector(
-          `iframe[name="${message.frameName}"]`,
+        if (!sourceWrapper) {
+          // Fallback if wrapper not found
+          insertAtEdge('tail', message.url);
+          return;
+        }
+
+        const sourceOrder = parseInt(sourceWrapper.style.order, 10);
+        const dividerOrder = sourceOrder + 1;
+
+        const dividers = document.querySelectorAll('.iframe-divider');
+        const divider = Array.from(dividers).find(
+          (d) =>
+            parseInt(/** @type {HTMLElement} */ (d).style.order, 10) ===
+            dividerOrder,
         );
+
+        if (divider) {
+          insertAtDivider(/** @type {HTMLDivElement} */ (divider), message.url);
+        } else {
+          insertAtEdge('tail', message.url);
+        }
+      } else if (message.action === 'replace-iframe-right') {
+        const { url } = message;
+        if (!url) return;
+
+        const resolvedFrameId = message.frameId ?? sender.frameId;
+        let sourceIframe = null;
+        if (typeof resolvedFrameId === 'number') {
+          sourceIframe = document.querySelector(
+            `iframe[data-frame-id="${resolvedFrameId}"]`,
+          );
+        }
+        if (!sourceIframe && typeof message.frameName === 'string') {
+          sourceIframe = document.querySelector(
+            `iframe[name="${message.frameName}"]`,
+          );
+        }
+        if (!sourceIframe) return;
+
+        const sourceWrapper = /** @type {HTMLDivElement} */ (
+          sourceIframe.closest('.iframe-wrapper')
+        );
+        if (!sourceWrapper) return;
+
+        const sourceOrder = parseInt(sourceWrapper.style.order, 10);
+        const targetOrder = sourceOrder + 2;
+
+        const targetWrapper = /** @type {HTMLDivElement|null} */ (
+          document.querySelector(`.iframe-wrapper[style*="order: ${targetOrder}"]`)
+        );
+
+        if (targetWrapper) {
+          const targetIframe = targetWrapper.querySelector('iframe');
+          if (targetIframe) {
+            targetIframe.src = url;
+          }
+        }
+      } else if (message.action === 'sb:key') {
+        // Handle forwarded key events from iframes
+        const code = message.code;
+        if (!message.altKey) return;
+        const validCodes = ['KeyA', 'KeyD', 'KeyE', 'KeyX', 'KeyF'];
+        if (!validCodes.includes(code)) return;
+
+        // Resolve the iframe from sender.frameId or message.frameName
+        let srcIframe = null;
+        if (typeof sender.frameId === 'number') {
+          srcIframe = document.querySelector(
+            `iframe[data-frame-id="${sender.frameId}"]`,
+          );
+        }
+        if (!srcIframe && typeof message.frameName === 'string') {
+          srcIframe = document.querySelector(
+            `iframe[name="${message.frameName}"]`,
+          );
+        }
+        const iframe = /** @type {HTMLIFrameElement|null} */ (srcIframe);
+        if (!iframe) return;
+
+        // Mark it active for consistency
+        if (appState.setActiveIframe) appState.setActiveIframe(iframe);
+
+        // Map Alt keys to actions
+        if (code === 'KeyA') handleShortcutForIframe(iframe, 'move-left');
+        else if (code === 'KeyD') handleShortcutForIframe(iframe, 'move-right');
+        else if (code === 'KeyE') handleShortcutForIframe(iframe, 'detach-iframe');
+        else if (code === 'KeyX') handleShortcutForIframe(iframe, 'remove-iframe');
+        else if (code === 'KeyF')
+          handleShortcutForIframe(iframe, 'toggle-full-page');
       }
-      const iframe = /** @type {HTMLIFrameElement|null} */ (srcIframe);
-      if (!iframe) return;
-
-      // Mark it active for consistency
-      if (appState.setActiveIframe) appState.setActiveIframe(iframe);
-
-      // Map Alt keys to actions
-      if (code === 'KeyA') handleShortcutForIframe(iframe, 'move-left');
-      else if (code === 'KeyD') handleShortcutForIframe(iframe, 'move-right');
-      else if (code === 'KeyE') handleShortcutForIframe(iframe, 'detach-iframe');
-      else if (code === 'KeyX') handleShortcutForIframe(iframe, 'remove-iframe');
-      else if (code === 'KeyF')
-        handleShortcutForIframe(iframe, 'toggle-full-page');
-    }
-  });
+    });
+  }
 
   const iframeContainer = /** @type {HTMLDivElement} */ (
     document.getElementById('iframe-container')
@@ -408,7 +412,9 @@ document.addEventListener('DOMContentLoaded', () => {
         (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
       if (url) {
         try {
-          chrome.tabs.create({ url, active: true });
+          if (typeof chrome !== 'undefined' && chrome.tabs) {
+            chrome.tabs.create({ url, active: true });
+          }
         } catch (_e) {}
         removeIframe(index);
       }

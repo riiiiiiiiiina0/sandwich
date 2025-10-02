@@ -63,7 +63,8 @@
         "docs/shared/*"
       ],
       "matches": [
-        "https://riiiiiiiiiina0.github.io/*"
+        "https://riiiiiiiiiina0.github.io/*",
+        "<all_urls>"
       ]
     }
   ],
@@ -71,5 +72,8 @@
     "matches": [
       "https://riiiiiiiiiina0.github.io/*"
     ]
+  },
+  "content_security_policy": {
+    "extension_pages": "script-src 'self'; style-src 'self' 'unsafe-inline'; frame-src file: http: https:;"
   }
 }

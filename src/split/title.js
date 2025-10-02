@@ -96,7 +96,8 @@ export const updateDocumentTitleAndFaviconFromIframe = (iframe) => {
   const tabId = appState.getTabId();
   const frameId = iframe.dataset.frameId;
 
-  if (!tabId || !frameId) {
+  // Guard for chrome object for testing purposes
+  if (typeof chrome === 'undefined' || !chrome.tabs || !tabId || !frameId) {
     // Fallback to existing title logic if we can't message the frame
     const title = iframe.getAttribute('data-sb-title') || 'Untitled';
     document.title = title;
