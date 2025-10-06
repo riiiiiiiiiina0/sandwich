@@ -31,7 +31,7 @@ import {
 import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
-import { createUrlDisplay } from './url-display.js';
+import { createUrlDisplay, updateUrlDisplay } from './url-display.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Store the tabId for messaging iframes
@@ -180,6 +180,23 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (code === 'KeyX') handleShortcutForIframe(iframe, 'remove-iframe');
       else if (code === 'KeyF')
         handleShortcutForIframe(iframe, 'toggle-full-page');
+    } else if (message.action === 'sb:nav') {
+      const { frameName, url } = message;
+      if (!url || !frameName) return;
+
+      // Find the iframe to update using its unique name
+      const iframe = /** @type {HTMLIFrameElement|null} */ (
+        document.querySelector(`iframe[name="${frameName}"]`)
+      );
+
+      if (iframe) {
+        // Update the data attribute, which is the source of truth for the URL state
+        iframe.setAttribute('data-sb-current-url', url);
+        // Refresh the visible URL display for the user
+        updateUrlDisplay(iframe);
+        // Update the main browser URL to persist the new state
+        updateUrlWithState();
+      }
     }
   });
 

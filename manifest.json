@@ -38,7 +38,7 @@
         "src/content/title-probe.js",
         "src/content/frame-connector.js"
       ],
-      "run_at": "document_start",
+      "run_at": "document_idle",
       "all_frames": true,
       "match_about_blank": true
     },
