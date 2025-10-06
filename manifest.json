@@ -38,7 +38,7 @@
         "src/content/title-probe.js",
         "src/content/frame-connector.js"
       ],
-      "run_at": "document_start",
+      "run_at": "document_idle",
       "all_frames": true,
       "match_about_blank": true
     },
@@ -65,6 +65,10 @@
       "matches": [
         "https://riiiiiiiiiina0.github.io/*"
       ]
+    },
+    {
+      "resources": [ "src/content/url-interceptor.js" ],
+      "matches": [ "<all_urls>" ]
     }
   ],
   "externally_connectable": {

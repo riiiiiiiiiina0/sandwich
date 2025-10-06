@@ -373,22 +373,29 @@ const doUngroup = async () => {
     active: true,
     currentWindow: true,
   });
-  if (!currentTab || !currentTab.url) return;
+  // We need the tab ID to send a message and its index to place new tabs.
+  if (!currentTab || typeof currentTab.id !== 'number' || typeof currentTab.index !== 'number') {
+    return;
+  }
 
   try {
-    const urlObj = new URL(currentTab.url);
-    let urls = [];
-    const stateParam = urlObj.searchParams.get('state');
-    if (stateParam) {
-      try {
-        const s = JSON.parse(stateParam);
-        if (s && Array.isArray(s.urls)) {
-          urls = s.urls.filter((u) => typeof u === 'string' && u.length > 0);
-        }
-      } catch (_e) {}
+    // Request the latest URLs directly from the content script on the split page.
+    // This is more reliable than parsing the tab's URL, which may be stale.
+    const response = await chrome.tabs.sendMessage(currentTab.id, {
+      action: 'get-current-urls',
+    });
+
+    const urls = (response && Array.isArray(response.urls) ? response.urls : [])
+      .filter(u => typeof u === 'string' && u.length > 0);
+
+    if (urls.length === 0) {
+      console.log('No URLs received from split page, aborting ungroup.');
+      // Fallback to closing the tab if it's empty.
+      await chrome.tabs.remove(currentTab.id);
+      return;
     }
 
-    const baseIndex = (currentTab.index ?? 0) + 1;
+    const baseIndex = currentTab.index + 1;
     const newTabs = await Promise.all(
       urls.map((u) =>
         chrome.tabs.create({
@@ -423,12 +430,11 @@ const doUngroup = async () => {
     console.error('Failed to unsplit tabs:', unsplitErr);
   }
 
-  if (typeof currentTab.id === 'number') {
-    try {
-      await chrome.tabs.remove(currentTab.id);
-    } catch (removeErr) {
-      console.error('Failed to close split tab:', removeErr);
-    }
+  // Finally, close the original split page tab.
+  try {
+    await chrome.tabs.remove(currentTab.id);
+  } catch (removeErr) {
+    console.error('Failed to close split tab:', removeErr);
   }
 };
 
@@ -459,4 +465,7 @@ chrome.runtime.onMessage.addListener(async (message, sender, sendResponse) => {
   } else if (message === 'isInstalled') {
     sendResponse({ status: 'installed' });
   }
+  // Note: The 'get-current-urls' message is handled by the content script
+  // in `src/split/entry.js`, not here in the background script.
+  // The background script *sends* the message, and the content script *responds*.
 });

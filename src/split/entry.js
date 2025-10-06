@@ -31,7 +31,7 @@ import {
 import { moveIframe } from './move.js';
 import { removeIframe } from './remove.js';
 import { expandIframe, collapseIframe, isFullPage } from './full-page.js';
-import { createUrlDisplay } from './url-display.js';
+import { createUrlDisplay, updateUrlDisplay } from './url-display.js';
 
 document.addEventListener('DOMContentLoaded', () => {
   // Store the tabId for messaging iframes
@@ -43,7 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   startContentTitleBridge();
 
-  chrome.runtime.onMessage.addListener((message, sender) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Return true to indicate that we will send a response asynchronously.
+    // This is required for message handlers that use sendResponse.
+    let isAsync = false;
+
     if (message.action === 'change-layout') {
       if (message.layout === 'grid') {
         setLayoutToGrid();
@@ -180,7 +184,54 @@ document.addEventListener('DOMContentLoaded', () => {
       else if (code === 'KeyX') handleShortcutForIframe(iframe, 'remove-iframe');
       else if (code === 'KeyF')
         handleShortcutForIframe(iframe, 'toggle-full-page');
+    } else if (message.action === 'sb:nav') {
+      const { frameName, url } = message;
+      if (!url || !frameName) return;
+
+      // Find the iframe to update using its unique name
+      const iframe = /** @type {HTMLIFrameElement|null} */ (
+        document.querySelector(`iframe[name="${frameName}"]`)
+      );
+
+      if (iframe) {
+        // Update the data attribute, which is the source of truth for the URL state
+        iframe.setAttribute('data-sb-current-url', url);
+        // Refresh the visible URL display for the user
+        updateUrlDisplay(iframe);
+        // Update the main browser URL to persist the new state
+        updateUrlWithState();
+      }
+    } else if (message.action === 'get-current-urls') {
+      const wrappers = /** @type {HTMLDivElement[]} */ (
+        Array.from(document.querySelectorAll('.iframe-wrapper'))
+      );
+
+      const wrappersSorted = wrappers
+        .map((w, domIndex) => ({
+          el: w,
+          orderValue: Number.parseInt(
+            /** @type {HTMLElement} */ (w).style.order || `${domIndex * 2}`,
+            10,
+          ),
+        }))
+        .sort((a, b) => a.orderValue - b.orderValue)
+        .map((x) => x.el);
+
+      const currentUrls = wrappersSorted.map((wrapper) => {
+        const iframe = /** @type {HTMLIFrameElement | null} */ (
+          wrapper.querySelector('iframe')
+        );
+        if (!iframe) return '';
+        const liveSrc = iframe.getAttribute('data-sb-current-url');
+        const originalSrc = iframe.getAttribute('src');
+        return (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
+      });
+
+      sendResponse({ urls: currentUrls });
+      isAsync = true;
     }
+
+    return isAsync;
   });
 
   const iframeContainer = /** @type {HTMLDivElement} */ (
