@@ -43,7 +43,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
   startContentTitleBridge();
 
-  chrome.runtime.onMessage.addListener((message, sender) => {
+  chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+    // Return true to indicate that we will send a response asynchronously.
+    // This is required for message handlers that use sendResponse.
+    let isAsync = false;
+
     if (message.action === 'change-layout') {
       if (message.layout === 'grid') {
         setLayoutToGrid();
@@ -197,7 +201,37 @@ document.addEventListener('DOMContentLoaded', () => {
         // Update the main browser URL to persist the new state
         updateUrlWithState();
       }
+    } else if (message.action === 'get-current-urls') {
+      const wrappers = /** @type {HTMLDivElement[]} */ (
+        Array.from(document.querySelectorAll('.iframe-wrapper'))
+      );
+
+      const wrappersSorted = wrappers
+        .map((w, domIndex) => ({
+          el: w,
+          orderValue: Number.parseInt(
+            /** @type {HTMLElement} */ (w).style.order || `${domIndex * 2}`,
+            10,
+          ),
+        }))
+        .sort((a, b) => a.orderValue - b.orderValue)
+        .map((x) => x.el);
+
+      const currentUrls = wrappersSorted.map((wrapper) => {
+        const iframe = /** @type {HTMLIFrameElement | null} */ (
+          wrapper.querySelector('iframe')
+        );
+        if (!iframe) return '';
+        const liveSrc = iframe.getAttribute('data-sb-current-url');
+        const originalSrc = iframe.getAttribute('src');
+        return (liveSrc && liveSrc.trim()) || originalSrc || iframe.src || '';
+      });
+
+      sendResponse({ urls: currentUrls });
+      isAsync = true;
     }
+
+    return isAsync;
   });
 
   const iframeContainer = /** @type {HTMLDivElement} */ (
