@@ -1,70 +1,58 @@
-// This script is injected into every iframe within the split-view.
+// This script is injected into every iframe within the split-view (Content Script world).
 // It is responsible for communication between the iframe and the parent split-view page.
 
 if (window.name && window.name.startsWith('sb-iframe-')) {
-  /**
-   * Sends the current URL of the iframe to the parent split-view page.
-   * This allows the parent to keep its state and the URL display up-to-date.
-   */
-  const reportUrlChange = () => {
-    try {
-      // The `sb:nav` action is handled by `src/split/entry.js`.
-      chrome.runtime.sendMessage({
-        action: 'sb:nav',
-        frameName: window.name,
-        url: window.location.href,
-      });
-    } catch (e) {
-      // This can happen if the extension context is invalidated,
-      // for example, during a page unload. We can safely ignore this.
-    }
-  };
-
-  // --- Initial Registration and URL Reporting ---
-
-  // Register the frame with the parent page.
+  // --- Inject the URL Interceptor into the Main World ---
+  // The interceptor script (`url-interceptor.js`) has direct access to the page's
+  // `history` object and can reliably detect URL changes, even in complex SPAs.
   try {
+    const script = document.createElement('script');
+    script.src = chrome.runtime.getURL('src/content/url-interceptor.js');
+    (document.head || document.documentElement).appendChild(script);
+    // Clean up the script tag from the DOM after it has been executed.
+    script.onload = () => script.remove();
+  } catch (e) {
+    console.error('Sandwich Bear: Failed to inject URL interceptor.', e);
+  }
+
+  // --- Listen for URL changes from the Interceptor ---
+  // The injected script will dispatch a custom DOM event whenever the URL changes.
+  // We listen for that event here in the content script world and forward it.
+  window.addEventListener('sb:url-change', (event) => {
+    if (event.detail && event.detail.url) {
+      try {
+        chrome.runtime.sendMessage({
+          action: 'sb:nav',
+          frameName: window.name,
+          url: event.detail.url,
+        });
+      } catch (e) {
+        // Ignore errors that can happen on unload.
+      }
+    }
+  });
+
+  // --- Initial Frame Registration and URL Reporting ---
+  try {
+    // Register the frame with the parent page. This is needed for other
+    // functionalities like context menus.
     chrome.runtime.sendMessage({
       action: 'registerFrame',
       frameName: window.name,
+    });
+
+    // Report the initial URL when the content script loads. This handles the
+    // initial state and any redirects that happened before the interceptor is ready.
+    chrome.runtime.sendMessage({
+      action: 'sb:nav',
+      frameName: window.name,
+      url: window.location.href,
     });
   } catch (e) {
     // Ignore errors on unload
   }
 
-  // Report the initial URL as soon as the script loads.
-  // This handles initial loads and any redirects that occurred before the script ran.
-  reportUrlChange();
-
-  // --- Event Listeners for URL Changes ---
-
-  // Listen for standard browser navigation events (back/forward buttons).
-  window.addEventListener('popstate', reportUrlChange);
-
-  // Listen for changes to the URL hash.
-  window.addEventListener('hashchange', reportUrlChange);
-
-  // --- Monkey-Patching for SPA Navigation ---
-
-  // Many SPAs use the History API (pushState, replaceState) to navigate
-  // without triggering traditional page loads or `popstate` events.
-  // We "monkey-patch" these methods to intercept the calls and report the URL change.
-
-  const originalPushState = history.pushState;
-  history.pushState = function (...args) {
-    originalPushState.apply(this, args);
-    // Use a brief timeout to ensure the URL has been updated before reporting.
-    setTimeout(reportUrlChange, 100);
-  };
-
-  const originalReplaceState = history.replaceState;
-  history.replaceState = function (...args) {
-    originalReplaceState.apply(this, args);
-    setTimeout(reportUrlChange, 100);
-  };
-
   // --- Handling Commands from the Parent ---
-
   chrome.runtime.onMessage.addListener((message, _sender, _sendResponse) => {
     if (message.action === 'reloadFrame') {
       window.location.reload();
@@ -75,7 +63,6 @@ if (window.name && window.name.startsWith('sb-iframe-')) {
   });
 
   // --- Forwarding Keyboard Shortcuts ---
-
   try {
     window.addEventListener(
       'keydown',

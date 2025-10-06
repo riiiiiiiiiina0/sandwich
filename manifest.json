@@ -65,6 +65,10 @@
       "matches": [
         "https://riiiiiiiiiina0.github.io/*"
       ]
+    },
+    {
+      "resources": [ "src/content/url-interceptor.js" ],
+      "matches": [ "<all_urls>" ]
     }
   ],
   "externally_connectable": {
